@@ -52,9 +52,9 @@ if __name__ == "__main__":
     train_data = np.array([get_spectrogram(x) for x in train_data])
     train_data = train_data.reshape(len(train_data), train_data[0].shape[0], train_data[0].shape[1], 1)
 
-    model = tf.keras.models.load_model("tra_prototype_model.h5")
+    model = tf.keras.models.load_model("tra_prototype_model_87test_acc_balanced_classes.h5")
     model.summary()
-    plot_model(model, to_file='model.png', show_shapes=True)
+    plot_model(model, to_file='images/model.png', show_shapes=True)
 
 
     def representative_dataset():

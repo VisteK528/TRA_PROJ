@@ -4,7 +4,7 @@ import os
 
 model = tf.keras.models.load_model("tra_prototype_model.h5")
 model.summary()
-plot_model(model, to_file='model.png', show_shapes=True)
+plot_model(model, to_file='images/model.png', show_shapes=True)
 
 
 converter = tf.lite.TFLiteConverter.from_keras_model(model)
