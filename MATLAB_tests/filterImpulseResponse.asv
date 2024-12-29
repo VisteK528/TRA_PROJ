@@ -1,0 +1,17 @@
+clear all;
+
+data = load("FIR_LP_fcutoff=16kHz.mat");
+Num = data.Num;
+
+N = 100;
+kstart = 10;
+order = length(Num);
+impulse = zeros(N, 1);
+impulse(10) = 1;
+
+impulse_response = filter(Num, 1, impulse);
+
+figure;
+stairs(impulse_response);
+
+impulse_response_coefficients = impulse_response(10:order);

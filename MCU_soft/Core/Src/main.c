@@ -18,10 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
-#include <stdio.h>
-
 #include "adc.h"
+#include "eth.h"
+#include "i2c.h"
 #include "tim.h"
 #include "usart.h"
 #include "usb_otg.h"
@@ -29,6 +28,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
+#include <stdio.h>
+
+#include "fir_filter.h"
+#include "decimation_filter.h"
+#include "liquid_crystal_i2c.h"
 
 /* USER CODE END Includes */
 
@@ -56,18 +61,34 @@ typedef enum {
   RECORDED,
   COMPLETED
 } MIKE_Status;
-#define SAMPLE_RATE 40000
-#define AUDIO_LENGTH 80000
+#define SAMPLE_RATE 48000
+#define AUDIO_LENGTH 48000
+#define AUDIO_LENGTH_2 16000
 
 uint32_t counter = 0;
+uint32_t counter2 = 0;
+uint8_t decimation_status = 0;
+
 uint8_t record_started = 0;
 uint16_t audio[AUDIO_LENGTH];
+float audio2[AUDIO_LENGTH_2];
 
 uint32_t adc_val = 0;
 char message[14];
 char message2[18] = "Counter: 000000\r\n";
 
 MIKE_Status status = WAITING;
+
+#define INPUT_FIR_BUFFER_LENGTH 17
+
+FIR_filter lp_input;
+
+float lp_input_buffer[INPUT_FIR_BUFFER_LENGTH];
+
+float lp_input_impulse_response[] = {0.00274596, 0.00451183, -2.77938e-18, -0.0199887, -0.0370705, 9.26802e-18, 0.1188, 0.264981, 0.332041, 0.264981, 0.1188, 9.26802e-18, -0.0370705, -0.0199887, -2.77938e-18, 0.00451183, 0.00274596};
+//float lp_input_impulse_response[] = {8.16029e-05, 0.00166663, 0.00558171, 0.0108719, 0.0137269, 0.0101485, 0.000601567, -0.00823391, -0.00841889, 0.000814292, 0.0102384, 0.00880484, -0.00379885, -0.0143684, -0.00924549, 0.00884011, 0.0201609, 0.00852808, -0.0173167, -0.0280379, -0.00516079, 0.032204, 0.0397416, -0.00453032, -0.0641725, -0.0643886, 0.0399278, 0.209946, 0.340162, 0.340162, 0.209946, 0.0399278, -0.0643886, -0.0641725, -0.00453032, 0.0397416, 0.032204, -0.00516079, -0.0280379, -0.0173167, 0.00852808, 0.0201609, 0.00884011, -0.00924549, -0.0143684, -0.00379885, 0.00880484, 0.0102384, 0.000814292, -0.00841889, -0.00823391, 0.000601567, 0.0101485, 0.0137269, 0.0108719, 0.00558171, 0.00166663, 8.16029e-05};
+
+DecimationFilter decimation_filter;
 
 /* USER CODE END PV */
 
@@ -92,11 +113,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
   if(hadc == &hadc1) {
-    adc_val = HAL_ADC_GetValue(&hadc1);
-    //HAL_UART_Transmit_IT(&huart3, &adc_val, sizeof(adc_val));
-
     if(status == STARTED && counter < AUDIO_LENGTH) {
-
+      adc_val = HAL_ADC_GetValue(&hadc1);
 
       // Toggle the Green LED
       HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -105,12 +123,26 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
       audio[counter] = adc_val;
       ++counter;
 
+
+      // if(decimation_status == 1) {
+      //   // Toggle the Green LED
+      //   HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+      //
+      //
+      //   audio[counter] = decimation_filter.out;
+      //   ++counter;
+      // }
     }
     else if(status == STARTED && counter >= AUDIO_LENGTH) {
       status = RECORDED;
       counter = 0;
-      HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
       HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+
+      if(HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+        Error_Handler();
+      }
+
     }
 
     //HAL_UART_Transmit_IT(&huart3, message, sizeof(message));
@@ -121,7 +153,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 void HAL_GPIO_EXTI_Callback(uint16_t pin) {
   if(status == WAITING) {
     HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
     counter = 0;
     status = STARTED;
   }
@@ -162,9 +193,14 @@ int main(void)
   MX_GPIO_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
-  MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
+  MX_USART3_UART_Init();
+  MX_ETH_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+
+  FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response, INPUT_FIR_BUFFER_LENGTH);
+  DecimationFilterInit(&decimation_filter, &lp_input, 3);
 
   if(HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
     Error_Handler();
@@ -180,18 +216,47 @@ int main(void)
     Error_Handler();
   }
 
+
+  /* Initialize */
+  HD44780_Init(2);
+
+  /* Clear buffer */
+  HD44780_Clear();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    sprintf(message2, "%d %f", counter2, decimation_filter.out);
+    HD44780_Clear();
+    HD44780_Home();
+    HD44780_PrintStr(message2);
     if(status == RECORDED) {
-      for(uint32_t i = 0; i < AUDIO_LENGTH; ++i) {
-        sprintf(message, "%05d,%05d\r\n", i, audio[i]);
+      decimation_status = DecimationFilterUpdate(&decimation_filter, audio[counter2]);
+
+      if(decimation_status == 1) {
+        audio2[counter2 / 3] = decimation_filter.out;
+      }
+
+      if(counter2 == AUDIO_LENGTH) {
+        status = COMPLETED;
+        HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+        counter2 = 0;
+      }
+
+      counter2++;
+    }
+    if(status == COMPLETED) {
+      for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
+        sprintf(message, "%05d,%05d\r\n", i, audio2[i]);
         HAL_UART_Transmit(&huart3, message, sizeof(message), 100);
       }
       status = WAITING;
+      if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+        Error_Handler();
+      }
     }
     /* USER CODE END WHILE */
 
