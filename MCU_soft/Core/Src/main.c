@@ -19,7 +19,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
-#include "eth.h"
 #include "i2c.h"
 #include "tim.h"
 #include "usart.h"
@@ -74,7 +73,7 @@ uint16_t audio[AUDIO_LENGTH];
 float audio2[AUDIO_LENGTH_2];
 
 uint32_t adc_val = 0;
-char message[14];
+char message[32];
 char message2[18] = "Counter: 000000\r\n";
 
 MIKE_Status status = WAITING;
@@ -143,6 +142,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
         Error_Handler();
       }
 
+      HD44780_Clear();
+      HD44780_Home();
+      HD44780_PrintStr("Processing...");
+
     }
 
     //HAL_UART_Transmit_IT(&huart3, message, sizeof(message));
@@ -155,6 +158,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
     HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
     counter = 0;
     status = STARTED;
+
+    HD44780_Clear();
+    HD44780_Home();
+    HD44780_PrintStr("Recording...");
+
   }
 }
 
@@ -195,7 +203,6 @@ int main(void)
   MX_TIM3_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_USART3_UART_Init();
-  MX_ETH_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
@@ -229,10 +236,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    sprintf(message2, "%d %f", counter2, decimation_filter.out);
-    HD44780_Clear();
-    HD44780_Home();
-    HD44780_PrintStr(message2);
     if(status == RECORDED) {
       decimation_status = DecimationFilterUpdate(&decimation_filter, audio[counter2]);
 
@@ -244,19 +247,30 @@ int main(void)
         status = COMPLETED;
         HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
         counter2 = 0;
+
+        HD44780_Clear();
+        HD44780_Home();
+        HD44780_PrintStr("Transmitting...");
       }
 
       counter2++;
     }
     if(status == COMPLETED) {
       for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
-        sprintf(message, "%05d,%05d\r\n", i, audio2[i]);
-        HAL_UART_Transmit(&huart3, message, sizeof(message), 100);
+        int length = snprintf(message, sizeof(message), "%05d,%05.5f\r\n", i, audio2[i]);
+        if (length > 0 && length < sizeof(message)) {
+          HAL_UART_Transmit(&huart3, (uint8_t *)message, length, 100);
+        }
       }
       status = WAITING;
       if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
         Error_Handler();
       }
+
+      HD44780_Clear();
+      HD44780_Home();
+      HD44780_PrintStr("Waiting...");
+      HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
     }
     /* USER CODE END WHILE */
 
