@@ -39,6 +39,13 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+typedef enum {
+  WAITING,
+  STARTED,
+  RECORDED,
+  COMPLETED
+} MIKE_Status;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -54,39 +61,61 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-typedef enum {
-  WAITING,
-  STARTED,
-  RECORDED,
-  COMPLETED
-} MIKE_Status;
+
 #define SAMPLE_RATE 48000
-#define AUDIO_LENGTH 48000
-#define AUDIO_LENGTH_2 16000
+
+#define OUTPUT_SAMPLE_RATE_16kHz
+//#define OUTPUT_SAMPLE_RATE_8kHz
+
+#if defined(OUTPUT_SAMPLE_RATE_8kHz) && !defined(OUTPUT_SAMPLE_RATE_16kHz)
+  #define AUDIO_LENGTH_2 8000
+  float audio2[AUDIO_LENGTH_2];
+
+  #define INPUT_FIR_BUFFER_LENGTH 18
+  float lp_input_buffer[INPUT_FIR_BUFFER_LENGTH];
+
+  /* FIR Filter (low-pass antialiasing)
+  * fs=48kHz
+  * f_cutoff=4kHz (in design) (real cutoff = fs after decimation = 8kHz)
+  * Suppresion in stopband ~ -50dB
+  * Design method: Window-Sinc (Hamming window)
+  * Order: 17
+  */
+  float lp_input_impulse_response[] = {-0.00299355, -0.00344797, -0.00262304, 0.00519037, 0.0257446, 0.0605127, 0.10397, 0.144531, 0.169115, 0.169115, 0.144531, 0.10397, 0.0605127, 0.0257446, 0.00519037, -0.00262304, -0.00344797, -0.00299355};
+
+#endif
+
+#if defined(OUTPUT_SAMPLE_RATE_16kHz) && !defined(OUTPUT_SAMPLE_RATE_8kHz)
+  #define AUDIO_LENGTH_2 16000
+  float audio2[AUDIO_LENGTH_2];
+
+  #define INPUT_FIR_BUFFER_LENGTH 16
+  float lp_input_buffer[INPUT_FIR_BUFFER_LENGTH];
+
+  /* FIR Filter (low-pass antialiasing)
+  * fs=48kHz
+  * f_cutoff=8kHz (in design) (real cutoff = fs after decimation = 16kHz)
+  * Suppresion in stopband ~ -50dB
+  * Design method: Window-Sinc (Hamming window)
+  * Order: 15
+  */
+  float lp_input_impulse_response[] = {0.00337896, 0.00291848, -0.00668689, -0.0280068, -0.0266131, 0.0487838, 0.192632, 0.313593, 0.313593, 0.192632, 0.0487838, -0.0266131, -0.0280068, -0.00668689, 0.00291848, 0.00337896};
+
+#endif
+
+
 
 uint32_t counter = 0;
 uint32_t counter2 = 0;
-uint8_t decimation_status = 0;
-
 uint8_t record_started = 0;
-uint16_t audio[AUDIO_LENGTH];
-float audio2[AUDIO_LENGTH_2];
+
 
 uint32_t adc_val = 0;
 char message[32];
-char message2[18] = "Counter: 000000\r\n";
-
+char message2[5];
 MIKE_Status status = WAITING;
 
-#define INPUT_FIR_BUFFER_LENGTH 17
-
 FIR_filter lp_input;
-
-float lp_input_buffer[INPUT_FIR_BUFFER_LENGTH];
-
-float lp_input_impulse_response[] = {0.00274596, 0.00451183, -2.77938e-18, -0.0199887, -0.0370705, 9.26802e-18, 0.1188, 0.264981, 0.332041, 0.264981, 0.1188, 9.26802e-18, -0.0370705, -0.0199887, -2.77938e-18, 0.00451183, 0.00274596};
-//float lp_input_impulse_response[] = {8.16029e-05, 0.00166663, 0.00558171, 0.0108719, 0.0137269, 0.0101485, 0.000601567, -0.00823391, -0.00841889, 0.000814292, 0.0102384, 0.00880484, -0.00379885, -0.0143684, -0.00924549, 0.00884011, 0.0201609, 0.00852808, -0.0173167, -0.0280379, -0.00516079, 0.032204, 0.0397416, -0.00453032, -0.0641725, -0.0643886, 0.0399278, 0.209946, 0.340162, 0.340162, 0.209946, 0.0399278, -0.0643886, -0.0641725, -0.00453032, 0.0397416, 0.032204, -0.00516079, -0.0280379, -0.0173167, 0.00852808, 0.0201609, 0.00884011, -0.00924549, -0.0143684, -0.00379885, 0.00880484, 0.0102384, 0.000814292, -0.00841889, -0.00823391, 0.000601567, 0.0101485, 0.0137269, 0.0108719, 0.00558171, 0.00166663, 8.16029e-05};
-
 DecimationFilter decimation_filter;
 
 /* USER CODE END PV */
@@ -112,44 +141,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
   if(hadc == &hadc1) {
-    if(status == STARTED && counter < AUDIO_LENGTH) {
-      adc_val = HAL_ADC_GetValue(&hadc1);
+    adc_val = HAL_ADC_GetValue(&hadc1);
+    const uint8_t decimation_status = DecimationFilterUpdate(&decimation_filter, (float)adc_val);
+    if(status == STARTED && counter < AUDIO_LENGTH_2) {
 
-      // Toggle the Green LED
-      HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-
-
-      audio[counter] = adc_val;
-      ++counter;
+      if(decimation_status == 1) {
+        // Toggle the Green LED
+        HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
 
-      // if(decimation_status == 1) {
-      //   // Toggle the Green LED
-      //   HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-      //
-      //
-      //   audio[counter] = decimation_filter.out;
-      //   ++counter;
-      // }
+        audio2[counter] = decimation_filter.out;
+        ++counter;
+      }
     }
-    else if(status == STARTED && counter >= AUDIO_LENGTH) {
-      status = RECORDED;
+    else if(status == STARTED && counter >= AUDIO_LENGTH_2) {
+      status = COMPLETED;
       counter = 0;
       HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-      HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+
+      HD44780_Clear();
+      HD44780_Home();
+      HD44780_PrintStr("Transmitting...");
 
       if(HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1) != HAL_OK) {
         Error_Handler();
       }
 
-      HD44780_Clear();
-      HD44780_Home();
-      HD44780_PrintStr("Processing...");
-
     }
-
-    //HAL_UART_Transmit_IT(&huart3, message, sizeof(message));
-    //HAL_UART_Transmit_IT(&huart3, &adc_val, sizeof(adc_val));
   }
 }
 
@@ -179,6 +197,8 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
+  SystemInit();
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -207,7 +227,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response, INPUT_FIR_BUFFER_LENGTH);
-  DecimationFilterInit(&decimation_filter, &lp_input, 3);
+  DecimationFilterInit(&decimation_filter, &lp_input, 6);
 
   if(HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
     Error_Handler();
@@ -236,30 +256,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    if(status == RECORDED) {
-      decimation_status = DecimationFilterUpdate(&decimation_filter, audio[counter2]);
+    HAL_Delay(100);
+    HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
 
-      if(decimation_status == 1) {
-        audio2[counter2 / 3] = decimation_filter.out;
-      }
-
-      if(counter2 == AUDIO_LENGTH) {
-        status = COMPLETED;
-        HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-        counter2 = 0;
-
-        HD44780_Clear();
-        HD44780_Home();
-        HD44780_PrintStr("Transmitting...");
-      }
-
-      counter2++;
-    }
     if(status == COMPLETED) {
+      HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+
       for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
-        int length = snprintf(message, sizeof(message), "%05d,%05.5f\r\n", i, audio2[i]);
+        const int length = snprintf(message, sizeof(message), "%05d,%05.5f\r\n", i, audio2[i]);
         if (length > 0 && length < sizeof(message)) {
-          HAL_UART_Transmit(&huart3, (uint8_t *)message, length, 100);
+          HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+          HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+          HAL_Delay(1);
         }
       }
       status = WAITING;
