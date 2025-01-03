@@ -71,17 +71,18 @@ typedef enum {
   #define AUDIO_LENGTH_2 8000
   float audio2[AUDIO_LENGTH_2];
 
-  #define INPUT_FIR_BUFFER_LENGTH 18
+  #define INPUT_FIR_BUFFER_LENGTH 61
   float lp_input_buffer[INPUT_FIR_BUFFER_LENGTH];
 
   /* FIR Filter (low-pass antialiasing)
   * fs=48kHz
-  * f_cutoff=4kHz (in design) (real cutoff = fs after decimation = 8kHz)
-  * Suppresion in stopband ~ -50dB
-  * Design method: Window-Sinc (Hamming window)
-  * Order: 17
+  * f_cutoff=4kHz
+  * Suppresion in stopband ~ -40/-60dB
+  * Design method: Window-Sinc (Kaiser window) (beta=3)
+  * Order: 60
   */
-  float lp_input_impulse_response[] = {-0.00299355, -0.00344797, -0.00262304, 0.00519037, 0.0257446, 0.0605127, 0.10397, 0.144531, 0.169115, 0.169115, 0.144531, 0.10397, 0.0605127, 0.0257446, 0.00519037, -0.00262304, -0.00344797, -0.00299355};
+  float lp_input_impulse_response[] = {1.32113e-18, 0.00128676, 0.00262602, 0.00353702, 0.00354325, 0.00234971, -2.62847e-18, -0.00304789, -0.00597185, -0.00777285, -0.00756562, -0.00489789, 4.02847e-18, 0.0061298, 0.0118641, 0.01531, 0.0148296, 0.00959165, -5.27723e-18, -0.0121449, -0.0238367, -0.0314082, -0.0313327, -0.0211072, 6.14009e-18, 0.0305383, 0.0669324, 0.104033, 0.13606, 0.157747, 0.165415, 0.157747, 0.13606, 0.104033, 0.0669324, 0.0305383, 6.14009e-18, -0.0211072, -0.0313327, -0.0314082, -0.0238367, -0.0121449, -5.27723e-18, 0.00959165, 0.0148296, 0.01531, 0.0118641, 0.0061298, 4.02847e-18, -0.00489789, -0.00756562, -0.00777285, -0.00597185, -0.00304789, -2.62847e-18, 0.00234971, 0.00354325, 0.00353702, 0.00262602, 0.00128676, 1.32113e-18};
+  const int decimation_factor = 6;
 
 #endif
 
@@ -89,17 +90,18 @@ typedef enum {
   #define AUDIO_LENGTH_2 16000
   float audio2[AUDIO_LENGTH_2];
 
-  #define INPUT_FIR_BUFFER_LENGTH 16
+  #define INPUT_FIR_BUFFER_LENGTH 31
   float lp_input_buffer[INPUT_FIR_BUFFER_LENGTH];
 
   /* FIR Filter (low-pass antialiasing)
   * fs=48kHz
-  * f_cutoff=8kHz (in design) (real cutoff = fs after decimation = 16kHz)
-  * Suppresion in stopband ~ -50dB
-  * Design method: Window-Sinc (Hamming window)
-  * Order: 15
+  * f_cutoff=8kHz
+  * Suppresion in stopband ~ -40/-50dB
+  * Design method: Window-Sinc (Kaiser window) (beta=3)
+  * Order: 30
   */
-  float lp_input_impulse_response[] = {0.00337896, 0.00291848, -0.00668689, -0.0280068, -0.0266131, 0.0487838, 0.192632, 0.313593, 0.313593, 0.192632, 0.0487838, -0.0266131, -0.0280068, -0.00668689, 0.00291848, 0.00337896};
+  float lp_input_impulse_response[] = {2.64379e-18, 0.00525507, 0.00709057, -5.25997e-18, -0.0119506, -0.0151399, 8.06158e-18, 0.0237419, 0.0296762, -1.05605e-17, -0.0477009, -0.0627015, 1.22872e-17, 0.133942, 0.272277, 0.331021, 0.272277, 0.133942, 1.22872e-17, -0.0627015, -0.0477009, -1.05605e-17, 0.0296762, 0.0237419, 8.06158e-18, -0.0151399, -0.0119506, -5.25997e-18, 0.00709057, 0.00525507, 2.64379e-18};
+  const int decimation_factor = 3;
 
 #endif
 
@@ -227,7 +229,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response, INPUT_FIR_BUFFER_LENGTH);
-  DecimationFilterInit(&decimation_filter, &lp_input, 6);
+  DecimationFilterInit(&decimation_filter, &lp_input, decimation_factor);
 
   if(HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
     Error_Handler();
@@ -247,8 +249,9 @@ int main(void)
   /* Initialize */
   HD44780_Init(2);
 
-  /* Clear buffer */
   HD44780_Clear();
+  HD44780_Home();
+  HD44780_PrintStr("Waiting...");
 
   /* USER CODE END 2 */
 

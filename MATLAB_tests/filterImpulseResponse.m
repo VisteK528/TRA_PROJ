@@ -1,6 +1,6 @@
 clear all;
 
-data = load("FIR_LP_fcutoff=4kHz.mat");
+data = load("FIR_LP_fcutoff=8kHz_real.mat");
 Num = data.Num;
 
 N = 100;
