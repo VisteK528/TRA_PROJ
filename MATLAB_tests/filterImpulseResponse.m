@@ -13,6 +13,7 @@ impulse_response = filter(Num, 1, impulse);
 
 figure;
 stairs(impulse_response);
+title("Step response");
 
 impulse_response_coefficients = impulse_response(kstart:kstart+order-1);
 
@@ -31,3 +32,4 @@ end
 
 fprintf(fileID, '};\n');
 fclose(fileID);
+
