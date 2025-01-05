@@ -82,43 +82,35 @@ def stft(signal, fs: int, N: int, hop_size: int, window_type='hann', sigma=0.1, 
     return stft_matrix, freq_bins, time_frames
 
 
-def highpass_stft_filter(stft_matrix, fs, f_cutoff, f_zero, minimum_transmittance = 1e-9, window_type='hann'):
+def get_highpass_stft_filter_maks(mask_length, fs, f_pass, f_zero, minimum_transmittance = 1e-9, window_type='hann'):
     """
-    Apply a high-pass filter to an STFT matrix.
+    Calculate a high-pass filter mask using to multiply with an FFT vectors.
 
     Parameters:
-        stft_matrix (np.array): STFT matrix (frequency bins x time frames).
+        mask_length (int): Length of the mask.
         fs (int): Sampling frequency in Hz.
-        f_cutoff (float): Cutoff frequency in Hz (transition band starts here).
-        f_zero (float): Frequency below which all bins are zeroed.
-        minimum_transmittance (float): Value of filter transmittance for frequencies below f_zero (linear).
+        f_pass (float): Frequency where pass band is started.
+        f_zero (float): Frequency below which all bins take on a minimum_transmittance value.
+        minimum_transmittance (float): Value of filter transmittance for frequencies below f_zero (linear coefficient).
         window_type (str): Type of window ('hann', 'hamming', 'blackman') for transition.
 
     Returns:
-        np.array: Filtered STFT matrix.
+        np.array: FFT filter mask.
     """
 
     # Validate inputs
-    if f_zero >= f_cutoff:
-        raise ValueError("f_zero must be less than f_cutoff.")
-    if f_cutoff > fs / 2:
-        raise ValueError("f_cutoff must be less than or equal to the Nyquist frequency.")
-
-    # Get the number of frequency bins and time frames
-    num_freq_bins, num_time_frames = stft_matrix.shape
+    if f_zero >= f_pass:
+        raise ValueError("f_zero must be less than f_pass.")
+    if f_pass > fs / 2:
+        raise ValueError("f_pass must be less than or equal to the Nyquist frequency.")
 
     # Compute frequency vector for the STFT matrix
-    freq_bins = np.fft.rfftfreq((num_freq_bins - 1) * 2, d=1/fs)
+    freq_bins = np.fft.rfftfreq((mask_length - 1) * 2, d=1 / fs)
 
     # Create the filter mask
-    mask = np.ones(num_freq_bins)
+    mask = np.ones(mask_length)
     zero_index = len(np.where(freq_bins < f_zero)[0])
-    cutoff_index = len(np.where(freq_bins < f_cutoff)[0])
-
-    print(f"Num freq_bins: {num_freq_bins}")
-    print(f"Freq_bins: {freq_bins}")
-    print(f"zero_index: {zero_index}")
-    print(f"cutoff_index: {cutoff_index}")
+    cutoff_index = len(np.where(freq_bins < f_pass)[0])
 
     # Zero out frequencies below f_zero
     mask[:zero_index] = minimum_transmittance
@@ -126,21 +118,33 @@ def highpass_stft_filter(stft_matrix, fs, f_cutoff, f_zero, minimum_transmittanc
     # Apply the transition window
     spectrum_edge_bins_number = cutoff_index - zero_index
     if window_type == 'hann':
-        window = np.hanning(spectrum_edge_bins_number*2)[0:spectrum_edge_bins_number]
+        window = np.hanning(spectrum_edge_bins_number * 2)[0:spectrum_edge_bins_number]
     elif window_type == 'hamming':
-        window = np.hamming(spectrum_edge_bins_number*2)[0:spectrum_edge_bins_number]
+        window = np.hamming(spectrum_edge_bins_number * 2)[0:spectrum_edge_bins_number]
     elif window_type == 'blackman':
-        window = np.blackman(spectrum_edge_bins_number*2)[0:spectrum_edge_bins_number]
+        window = np.blackman(spectrum_edge_bins_number * 2)[0:spectrum_edge_bins_number]
     else:
         raise ValueError(f"Unsupported window type: {window_type}")
 
-    print(f"window: {window}")
-
+    window = np.maximum(window, minimum_transmittance)
     mask[zero_index:zero_index + spectrum_edge_bins_number] = window
-    print(f"mask: {mask}")
+    return mask
+
+
+def highpass_stft_filter(stft_matrix, filter_mask):
+    """
+    Apply a high-pass filter to an STFT matrix.
+
+    Parameters:
+        stft_matrix (np.array): STFT matrix.
+        filter_mask (np.array): Filter mask.
+
+    Returns:
+        np.array: filtered STFT matrix.
+    """
 
     # Apply the mask to the STFT matrix
-    filtered_stft_matrix = stft_matrix * mask[:, np.newaxis]
+    filtered_stft_matrix = stft_matrix * filter_mask[:, np.newaxis]
 
     return filtered_stft_matrix
 
