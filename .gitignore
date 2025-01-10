@@ -1,16 +1,16 @@
-# Ignorowanie katalogów generowanych podczas budowy projektu
+# Ignoring directories generated during project build
 build/
 Debug/
 Release/
 
-# Ignorowanie plików tymczasowych IDE
+# Ignore IDE temporary files
 **/.idea/
 **/.vscode/
 **/*.swp
 **/*.swo
 **/*.asv
 
-# Ignorowanie plików tymczasowych systemu
+# Ignore system temporary files
 *.tmp
 *.log
 *.bak
@@ -18,7 +18,7 @@ Release/
 *.DS_Store
 Thumbs.db
 
-# Ignorowanie binariów i obiektów
+# Ignoring binaries and objects
 *.o
 *.d
 *.a
@@ -27,23 +27,23 @@ Thumbs.db
 *.hex
 *.map
 
-# Ignorowanie plików CMake
+# Ignoring CMake files
 CMakeFiles/
 CMakeCache.txt
 cmake-build-*/
 
-# Ignorowanie konfiguracji debuggerów
+# Ignore debugger configurations
 *.launch
 **/__pycache__/
 
-# Zachowanie konfiguracji CubeMX, CubeIDE i CMSIS DSP
+# Preserve CubeMX, CubeIDE and CMSIS DSP configurations
 !*.ioc
 !*.project
 !*.cproject
 !.mxproject
 !.settings/
 
-# Ignorowanie wygenerowanego kodu (jeśli używasz CubeMX, możesz zmienić to na wybrane katalogi, jeśli generujesz kod częściowo)
+# Ignore generated code
 #Middlewares/
 #Drivers/
 

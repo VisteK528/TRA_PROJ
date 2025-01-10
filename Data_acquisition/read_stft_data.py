@@ -1,8 +1,6 @@
 import serial
 import os
 
-from DSP_prototype.STFT_tests import stft_matrix
-
 # Configuration
 PORT = '/dev/ttyACM0'
 BAUDRATE = 115200
@@ -45,7 +43,7 @@ def get_unique_common_filenames(directory1, directory2, base_name1, base_name2, 
     counter = 1
 
     # Loop until a unique file name is found
-    while file_name1 in os.listdir(directory1) and file_name2 in os.listdir(directory2):
+    while file_name1 in os.listdir(directory1) or file_name2 in os.listdir(directory2):
         file_name1 = f"{base_name1}_{counter}.{extension}"
         file_name2 = f"{base_name2}_{counter}.{extension}"
         counter += 1
@@ -67,29 +65,36 @@ if __name__ == "__main__":
     stft_output_file_base = f"stft_{chosen_word}_fs={chosen_sampling}"
     audio_output_file, stft_output_file = get_unique_common_filenames(
         f"data/audio/{chosen_sampling}_sampling/", f"data/stft/{chosen_sampling}_sampling/",
-        audio_output_file_base, stft_output_file_base, ".csv")
+        audio_output_file_base, stft_output_file_base, "csv")
 
-
-    if chosen_sampling == "16kHz":
-        break_value = 15999
-    else:
-        break_value = 7999
-
-    # Open file for saving received data
-    with open(AUDIO_OUTPUT_FILE, "w") as f:
-        f.writelines("index,y\n")
+    # Open files for saving received data
+    with open(audio_output_file, "w") as audio_file, open(stft_output_file, "w") as stft_file:
+        audio_file.writelines("index,y\n")
+        stft_file.writelines("index,stft_value\n")
         try:
+            receiving_stft = False
             while True:
                 # Read a chunk of data
                 chunk = ser.read_until(b'\r\n')
                 chunk = chunk.decode('utf-8')
                 print(chunk, end='')
-                f.writelines(chunk)
+
+                if chunk.strip() == "AUDIO_START" or chunk.strip() == "AUDIO_STOP":
+                    continue
+
+                if chunk.strip() == "STFT_START":
+                    receiving_stft = True
+                    continue
+                elif chunk.strip() == "STFT_STOP":
+                    break
+
+                if receiving_stft:
+                    stft_file.writelines(chunk)
+                else:
+                    audio_file.writelines(chunk)
 
                 number, data = chunk.split(',')
 
-                if int(number) == break_value:
-                    break
         except KeyboardInterrupt:
             print("Reception stopped.")
         finally:

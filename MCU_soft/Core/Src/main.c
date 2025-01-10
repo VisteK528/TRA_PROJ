@@ -291,6 +291,7 @@ int main(void)
   {
     HAL_Delay(100);
     HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+    uint8_t length;
 
     if(status == STARTED_STFT) {
     	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
@@ -312,18 +313,27 @@ int main(void)
 		HD44780_SetCursor(0, 1);
 		HD44780_PrintStr("data...");
 
+		length = snprintf(message, sizeof(message), "AUDIO_START\r\n");
+		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+		HAL_Delay(1);
+
 		for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
-			const uint8_t length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, audio2[i]);
+			length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, audio2[i]);
 			if (length > 0 && length < sizeof(message)) {
 			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 			  HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
 			  HAL_Delay(1);
 			}
 		}
+		length = snprintf(message, sizeof(message), "AUDIO_STOP\r\n");
+		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+		HAL_Delay(1);
+
 		status = STARTED_TRANSMITTING_STFT;
 		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
 			Error_Handler();
 		}
+
 
     }
 
@@ -337,27 +347,33 @@ int main(void)
 		HD44780_SetCursor(0, 1);
 		HD44780_PrintStr("STFT...");
 
-		const uint8_t length = snprintf(message, sizeof(message), "\n\n\n\n\n");
+		length = snprintf(message, sizeof(message), "STFT_START\r\n");
 		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
 		HAL_Delay(1);
 
 		for(uint32_t i = 0; i < stft_solver.out_length; ++i) {
-			const uint8_t length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, stft_solver.out[i]);
+			length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, stft_solver.out[i]);
 			if (length > 0 && length < sizeof(message)) {
 			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 			  HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
 			  HAL_Delay(1);
 			}
 		}
-		status = WAITING;
-		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-			Error_Handler();
-		}
+
+		length = snprintf(message, sizeof(message), "STFT_STOP\r\n");
+		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+		HAL_Delay(1);
 
 		HD44780_Clear();
 		HD44780_Home();
 		HD44780_PrintStr("Waiting...");
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
+		status = WAITING;
+		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+			Error_Handler();
+		}
+
     }
 
     /* USER CODE END WHILE */
