@@ -1,4 +1,49 @@
-**/.idea
-**/.vscode
-**/cmake-build*
+# Ignorowanie katalogów generowanych podczas budowy projektu
+build/
+Debug/
+Release/
+
+# Ignorowanie plików tymczasowych IDE
+**/.idea/
+**/.vscode/
+**/*.swp
+**/*.swo
 **/*.asv
+
+# Ignorowanie plików tymczasowych systemu
+*.tmp
+*.log
+*.bak
+*.sav
+*.DS_Store
+Thumbs.db
+
+# Ignorowanie binariów i obiektów
+*.o
+*.d
+*.a
+*.elf
+*.bin
+*.hex
+*.map
+
+# Ignorowanie plików CMake
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+
+# Ignorowanie konfiguracji debuggerów
+*.launch
+**/__pycache__/
+
+# Zachowanie konfiguracji CubeMX, CubeIDE i CMSIS DSP
+!*.ioc
+!*.project
+!*.cproject
+!.mxproject
+!.settings/
+
+# Ignorowanie wygenerowanego kodu (jeśli używasz CubeMX, możesz zmienić to na wybrane katalogi, jeśli generujesz kod częściowo)
+#Middlewares/
+#Drivers/
+

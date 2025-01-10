@@ -82,7 +82,7 @@ def stft(signal, fs: int, N: int, hop_size: int, window_type='hann', sigma=0.1, 
     return stft_matrix, freq_bins, time_frames
 
 
-def get_highpass_stft_filter_maks(mask_length, fs, f_pass, f_zero, minimum_transmittance = 1e-9, window_type='hann'):
+def get_highpass_stft_filter_mask(mask_length, fs, f_pass, f_zero, minimum_transmittance = 1e-9, window_type='hann'):
     """
     Calculate a high-pass filter mask using to multiply with an FFT vectors.
 

@@ -1,10 +1,12 @@
 import serial
 import os
 
+from DSP_prototype.STFT_tests import stft_matrix
+
 # Configuration
 PORT = '/dev/ttyACM0'
 BAUDRATE = 115200
-OUTPUT_FILE = "audio_data.csv"
+audio_output_file = "audio_data.csv"
 
 label_strings = [ "go", "left", "no", "right", "stop", "yes", "silence", "unknown"]
 selected_labels_dict = {i:x for i, x in enumerate(label_strings, 1)}
@@ -36,17 +38,19 @@ def choose_from_available(options: dict) -> tuple[int, str]:
     return chosen_option_key, chosen_option_val
 
 
-def get_unique_filename(directory, base_name, extension):
+def get_unique_common_filenames(directory1, directory2, base_name1, base_name2, extension):
     # Combine the base name and extension
-    file_name = f"{base_name}.{extension}"
+    file_name1 = f"{base_name1}.{extension}"
+    file_name2 = f"{base_name2}.{extension}"
     counter = 1
 
     # Loop until a unique file name is found
-    while file_name in os.listdir(directory):
-        file_name = f"{base_name}_{counter}.{extension}"
+    while file_name1 in os.listdir(directory1) and file_name2 in os.listdir(directory2):
+        file_name1 = f"{base_name1}_{counter}.{extension}"
+        file_name2 = f"{base_name2}_{counter}.{extension}"
         counter += 1
 
-    return os.path.join(directory, file_name)
+    return os.path.join(directory1, file_name1), os.path.join(directory2, file_name2)
 
 if __name__ == "__main__":
     # Open serial port
@@ -59,9 +63,11 @@ if __name__ == "__main__":
     print("At what sampling frequency the word will be recorded?")
     _, chosen_sampling = choose_from_available(sampling_strings_dict)
 
-    OUTPUT_FILE_BASE = f"{chosen_word}_fs={chosen_sampling}"
-    OUTPUT_FILE = get_unique_filename(f"data/{chosen_sampling}_sampling/", OUTPUT_FILE_BASE, "csv")
-
+    audio_output_file_base = f"{chosen_word}_fs={chosen_sampling}"
+    stft_output_file_base = f"stft_{chosen_word}_fs={chosen_sampling}"
+    audio_output_file, stft_output_file = get_unique_common_filenames(
+        f"data/audio/{chosen_sampling}_sampling/", f"data/stft/{chosen_sampling}_sampling/",
+        audio_output_file_base, stft_output_file_base, ".csv")
 
 
     if chosen_sampling == "16kHz":
@@ -70,7 +76,7 @@ if __name__ == "__main__":
         break_value = 7999
 
     # Open file for saving received data
-    with open(OUTPUT_FILE, "w") as f:
+    with open(AUDIO_OUTPUT_FILE, "w") as f:
         f.writelines("index,y\n")
         try:
             while True:
