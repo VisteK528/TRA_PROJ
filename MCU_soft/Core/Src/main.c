@@ -333,10 +333,6 @@ int main(void)
 		HAL_Delay(1);
 
 		status = STARTED_TRANSMITTING_STFT;
-		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-			Error_Handler();
-		}
-
 
     }
 
@@ -373,9 +369,9 @@ int main(void)
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
 		status = WAITING;
-//		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-//			Error_Handler();
-//		}
+		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+			Error_Handler();
+		}
 
     }
 
