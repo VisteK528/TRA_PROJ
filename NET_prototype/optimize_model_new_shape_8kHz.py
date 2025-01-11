@@ -60,7 +60,6 @@ if __name__ == "__main__":
 
     model = tf.keras.models.load_model("NET_prototype/tra_prototype_model_86test_acc_8kHz_PioterSTFT.keras")
     model.summary()
-    # plot_model(model, to_file='images/model.png', show_shapes=True)
 
 
     def representative_dataset():
@@ -72,13 +71,16 @@ if __name__ == "__main__":
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     converter.representative_dataset = representative_dataset
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
+    # converter.target_spec.supported_types = [tf.float16]
+    converter.target_spec.supported_types = [tf.float32]
     converter.inference_input_type = tf.float32
     converter.inference_output_type = tf.float32
     tflite_model = converter.convert()
 
-    with open('NET_prototype/test_new_shape_8kHz.tflite', 'wb') as f:
+    with open('NET_prototype/test_new_shape_8kHz_1b.tflite', 'wb') as f:
         f.write(tflite_model)
 
-    model_Size = os.path.getsize("NET_prototype/test_new_shape_8kHz.tflite")
+    model_Size = os.path.getsize("NET_prototype/test_new_shape_8kHz_1b.tflite")
     print(f"Model ma {model_Size / 1e6} bajtów")
