@@ -15,6 +15,7 @@ from DSP_prototype.DSP_algorithms import stft
 
 sample_rate = 8000
 selected_labels = []
+dictionary_classes = {1: 'go', 2: 'left', 3: 'no', 6: 'right', 7: 'stop', 9: 'yes', 10: 'silence', 11: 'unknown' }
 
 
 def split_data_and_labels(dataset, length):
@@ -22,9 +23,13 @@ def split_data_and_labels(dataset, length):
     labels = []
     i = 0
     for feature, label in dataset:
+        label_value = int(label.numpy())
+        
+        # Pomijanie przykładów z etykietą 3
+        if label_value not in dictionary_classes.keys():
+            continue
         if i == length:
             break
-
         pcm = feature.numpy()
         pcm = pcm.astype(np.float32)
         pcm = librosa.resample(pcm, orig_sr=16000, target_sr=8000)
@@ -46,7 +51,7 @@ if __name__ == "__main__":
 
     print(f"Train data length: {len(train_data)}")
 
-    train_data, train_labels = split_data_and_labels(train_data, length=100)
+    train_data, train_labels = split_data_and_labels(train_data, length=1000)
 
     train_data_max = np.max(np.abs(train_data))
 
@@ -58,29 +63,29 @@ if __name__ == "__main__":
     train_data = train_data.reshape(len(train_data), train_data[0].shape[0], train_data[0].shape[1], 1)
     train_data = train_data.astype(np.float32)
 
-    model = tf.keras.models.load_model("NET_prototype/tra_prototype_model_86test_acc_8kHz_PioterSTFT.keras")
+    model = tf.keras.models.load_model("tra_prototype_model_86test_acc_8kHz_PioterSTFT.keras")
     model.summary()
 
 
     def representative_dataset():
-        for input_value in train_data[:100]:
+        for input_value in train_data[:1000]:
             yield [tf.expand_dims(input_value, 0)]
 
 
     # Convert the model.
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.representative_dataset = representative_dataset
+    converter.representative_dataset = representative_dataset()
     # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
-    # converter.target_spec.supported_types = [tf.float16]
-    converter.target_spec.supported_types = [tf.float32]
+    converter.target_spec.supported_types = [tf.float16]
+    # converter.target_spec.supported_types = [tf.float32]
     converter.inference_input_type = tf.float32
     converter.inference_output_type = tf.float32
     tflite_model = converter.convert()
 
-    with open('NET_prototype/test_new_shape_8kHz_1b.tflite', 'wb') as f:
+    with open('tra_test1_8kHz_0.5MB.tflite', 'wb') as f:
         f.write(tflite_model)
 
-    model_Size = os.path.getsize("NET_prototype/test_new_shape_8kHz_1b.tflite")
+    model_Size = os.path.getsize("tra_test1_8kHz_0.5MB.tflite")
     print(f"Model ma {model_Size / 1e6} bajtów")
