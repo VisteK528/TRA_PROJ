@@ -1,4 +1,5 @@
 import numpy as np
+from jupyter_server.auth import passwd
 
 
 def gaussian_window(size, sigma=0.1):
@@ -95,7 +96,9 @@ def get_highpass_stft_filter_mask(mask_length, fs, f_pass, f_zero, minimum_trans
         window_type (str): Type of window ('hann', 'hamming', 'blackman') for transition.
 
     Returns:
-        np.array: FFT filter mask.
+        mask (np.array): High-pass filter mask.
+        zero_index (int): The first index where spectrum vector is multiplied by window.
+        pass_index (int): The first index where spectrum vector is multiplied by 1.
     """
 
     # Validate inputs
@@ -110,13 +113,13 @@ def get_highpass_stft_filter_mask(mask_length, fs, f_pass, f_zero, minimum_trans
     # Create the filter mask
     mask = np.ones(mask_length)
     zero_index = len(np.where(freq_bins < f_zero)[0])
-    cutoff_index = len(np.where(freq_bins < f_pass)[0])
+    pass_index = len(np.where(freq_bins < f_pass)[0])
 
     # Zero out frequencies below f_zero
     mask[:zero_index] = minimum_transmittance
 
     # Apply the transition window
-    spectrum_edge_bins_number = cutoff_index - zero_index
+    spectrum_edge_bins_number = pass_index - zero_index
     if window_type == 'hann':
         window = np.hanning(spectrum_edge_bins_number * 2)[0:spectrum_edge_bins_number]
     elif window_type == 'hamming':
@@ -127,8 +130,8 @@ def get_highpass_stft_filter_mask(mask_length, fs, f_pass, f_zero, minimum_trans
         raise ValueError(f"Unsupported window type: {window_type}")
 
     window = np.maximum(window, minimum_transmittance)
-    mask[zero_index:zero_index + spectrum_edge_bins_number] = window
-    return mask
+    mask[zero_index:pass_index] = window
+    return mask, zero_index, pass_index
 
 
 def highpass_stft_filter(stft_matrix, filter_mask):
@@ -140,7 +143,7 @@ def highpass_stft_filter(stft_matrix, filter_mask):
         filter_mask (np.array): Filter mask.
 
     Returns:
-        np.array: filtered STFT matrix.
+        filtered_stft_matrix (np.array): Filtered STFT matrix.
     """
 
     # Apply the mask to the STFT matrix

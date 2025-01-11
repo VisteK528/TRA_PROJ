@@ -124,6 +124,7 @@ DecimationFilter decimation_filter;
 
 #define FFT_SIZE 256
 #define HOP_SIZE 128
+#define STFT_FILTER_MASK_SIZE 4
 
 const float hann_window[FFT_SIZE] = {
     0.0000000, 0.0001518, 0.0006070, 0.0013654, 0.0024265, 0.0037897, 0.0054542, 0.0074189, 0.0096826, 0.0122440,
@@ -153,7 +154,9 @@ const float hann_window[FFT_SIZE] = {
     0.0337639, 0.0294554, 0.0254325, 0.0216978, 0.0182534, 0.0151015, 0.0122440, 0.0096826, 0.0074189, 0.0054542,
     0.0037897, 0.0024265, 0.0013654, 0.0006070, 0.0001518, 0.0000000
 };
-STFT_solver stft_solver;
+
+const float stft_filter_mask[] = {0.0010000, 0.1882551, 0.6112605, 0.9504844};
+STFT_with_filter_solver stft_solver;
 
 /* USER CODE END PV */
 
@@ -259,7 +262,7 @@ int main(void)
 
   FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response, INPUT_FIR_BUFFER_LENGTH);
   DecimationFilterInit(&decimation_filter, &lp_input, decimation_factor);
-  STFT_Init(&stft_solver, FFT_SIZE, HOP_SIZE, AUDIO_LENGTH_2, hann_window);
+  STFT_Init(&stft_solver, FFT_SIZE, HOP_SIZE, AUDIO_LENGTH_2, hann_window, STFT_FILTER_MASK_SIZE, stft_filter_mask);
 
   if(HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
     Error_Handler();
@@ -370,9 +373,9 @@ int main(void)
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
 		status = WAITING;
-		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-			Error_Handler();
-		}
+//		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+//			Error_Handler();
+//		}
 
     }
 
