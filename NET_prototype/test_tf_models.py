@@ -3,7 +3,7 @@ import tensorflow as tf
 import librosa
 import numpy as np
 from scipy.signal import butter, lfilter
-from DSP_algorithms import stft
+from DSP_prototype import DSP_algorithms
 
 sample_rate = 8000
 dictionary_classes = {1: 'go', 2:'left', 3:'no', 6:'right', 7:'stop',9: 'yes',10:'silence', 11:'unknown' }
@@ -26,7 +26,7 @@ def split_data_and_labels(dataset, length):
     return np.vstack(data), np.vstack(labels)
 
 def get_spectrogram(pcm):
-    D, f, t = stft(pcm, 8000, 256, 128)
+    D, f, t = DSP_algorithms.stft(pcm, 8000, 256, 128)
     return np.abs(D)
 
 
@@ -71,6 +71,6 @@ if __name__ == "__main__":
 
             print(f"Predicted word: {predicted_label}/{train_labels[idx]}")
 
-print(all_worlds)
-print(good_claffified)
-print(good_claffified/all_worlds)
+    print(all_worlds)
+    print(good_claffified)
+    print(good_claffified/all_worlds)

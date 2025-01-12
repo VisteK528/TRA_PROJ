@@ -10,12 +10,13 @@ from tensorflow.keras import models
 from tensorflow.keras.utils import plot_model
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from DSP_prototype.DSP_algorithms import stft
 
 sample_rate = 8000
 selected_labels = []
-dictionary_classes = {1: 'go', 2: 'left', 3: 'no', 6: 'right', 7: 'stop', 9: 'yes', 10: 'silence', 11: 'unknown' }
+dictionary_classes = {1: 'go', 2: 'left', 3: 'no', 6: 'right', 7: 'stop', 9: 'yes', 10: 'silence', 11: 'unknown'}
 
 
 def split_data_and_labels(dataset, length):
@@ -24,7 +25,7 @@ def split_data_and_labels(dataset, length):
     i = 0
     for feature, label in dataset:
         label_value = int(label.numpy())
-        
+
         # Pomijanie przykładów z etykietą 3
         if label_value not in dictionary_classes.keys():
             continue
@@ -39,9 +40,11 @@ def split_data_and_labels(dataset, length):
         i += 1
     return np.vstack(data), np.vstack(labels)
 
+
 def get_spectrogram(pcm):
     D, f, t = stft(pcm, 8000, 256, 128)
     return np.abs(D)
+
 
 if __name__ == "__main__":
     # Load the Speech Commands dataset
@@ -63,11 +66,11 @@ if __name__ == "__main__":
     train_data = train_data.reshape(len(train_data), train_data[0].shape[0], train_data[0].shape[1], 1)
     train_data = train_data.astype(np.float32)
 
-    model = tf.keras.models.load_model("tra_prototype_model_86test_acc_8kHz_PioterSTFT.keras")
+    model = tf.keras.models.load_model("tra_prototype_model_82test_acc_8kHz_PioterSTFT_interesting.keras")
     model.summary()
 
 
-    def representative_dataset():
+    def representative_dataset_gen():
         for input_value in train_data[:1000]:
             yield [tf.expand_dims(input_value, 0)]
 
@@ -75,17 +78,14 @@ if __name__ == "__main__":
     # Convert the model.
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.representative_dataset = representative_dataset()
-    # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
-    converter.target_spec.supported_types = [tf.float16]
-    # converter.target_spec.supported_types = [tf.float32]
+    converter.representative_dataset = representative_dataset_gen
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     converter.inference_input_type = tf.float32
     converter.inference_output_type = tf.float32
     tflite_model = converter.convert()
 
-    with open('tra_test1_8kHz_0.5MB.tflite', 'wb') as f:
+    with open('tra_test_82test_acc_PioterSTFT_float_float_int.tflite', 'wb') as f:
         f.write(tflite_model)
 
-    model_Size = os.path.getsize("tra_test1_8kHz_0.5MB.tflite")
+    model_Size = os.path.getsize("tra_test_82test_acc_PioterSTFT_float_float_int.tflite")
     print(f"Model ma {model_Size / 1e6} bajtów")
