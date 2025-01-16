@@ -1,17 +1,10 @@
 import tensorflow_datasets as tfds
 import tensorflow as tf
-import matplotlib.pyplot as plt
 import numpy as np
 import librosa
 import os
-from IPython import display
-from tensorflow.keras import layers
-from tensorflow.keras import models
-from tensorflow.keras.utils import plot_model
 import sys
-import os
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append("../")
 from DSP_prototype.DSP_algorithms import stft
 
 sample_rate = 8000
@@ -58,34 +51,34 @@ if __name__ == "__main__":
 
     train_data_max = np.max(np.abs(train_data))
 
-    for i in range(len(train_data)):
-        train_data[i] /= train_data_max
-        print(i)
+    # for i in range(len(train_data)):
+    #     train_data[i] /= train_data_max
 
     train_data = np.array([get_spectrogram(x) for x in train_data])
     train_data = train_data.reshape(len(train_data), train_data[0].shape[0], train_data[0].shape[1], 1)
     train_data = train_data.astype(np.float32)
 
-    model = tf.keras.models.load_model("tra_prototype_model_82test_acc_8kHz_PioterSTFT_interesting.keras")
+    model = tf.keras.models.load_model("tra_medium_model_86test_acc_8kHz_PioterSTFT.keras")
     model.summary()
 
 
     def representative_dataset_gen():
-        for input_value in train_data[:1000]:
+        for input_value in train_data[:20000]:
             yield [tf.expand_dims(input_value, 0)]
 
 
     # Convert the model.
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
     converter.representative_dataset = representative_dataset_gen
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8, tf.float32]
+    #converter.target_spec.supported_ops = [tf.float16]
     converter.inference_input_type = tf.float32
     converter.inference_output_type = tf.float32
     tflite_model = converter.convert()
 
-    with open('tra_test_82test_acc_PioterSTFT_float_float_int.tflite', 'wb') as f:
+    with open('tra_medium_model_86test_acc_8kHz_PioterSTFT_float_float_int.tflite', 'wb') as f:
         f.write(tflite_model)
 
-    model_Size = os.path.getsize("tra_test_82test_acc_PioterSTFT_float_float_int.tflite")
-    print(f"Model ma {model_Size / 1e6} bajtów")
+    model_Size = os.path.getsize("tra_medium_model_86test_acc_8kHz_PioterSTFT_float_float_int.tflite")
+    print(f"Model ma {model_Size / 1e3} kB")
