@@ -1,0 +1,658 @@
+{
+    "_allocate_inputs": 4,
+    "_allocate_outputs": 4,
+    "cli_parameters": "analyze --target stm32f4 --name network_1 -m /home/kasia/tra/tra_test_82test_acc_PioterSTFT_float_float_float.tflite --compression none --verbosity 1 --allocate-inputs -O ram --allocate-outputs --workspace /tmp/mxAI_workspace573131363561310320403962508333675 --output /home/kasia/.stm32cubemx/network_1_output",
+    "cli_version": {
+        "extra": "19895",
+        "major": 1,
+        "micro": 0,
+        "minor": 0
+    },
+    "cli_version_str": "1.0.0-19895",
+    "code_size": 0,
+    "compression": [],
+    "date_time": "2025-01-14T21:28:29+0100",
+    "error": 0,
+    "error_str": [],
+    "exec_cmd": "analyze",
+    "exec_duration": 0.0,
+    "hash": "0xe4aff6ca622678de073e452734b81cb0",
+    "inputs": [
+        "serving_default_input_layer_20"
+    ],
+    "layers": [
+        {
+            "c_id": [
+                0
+            ],
+            "extras": {
+                "n_macc": 0,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 31476,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        61,
+                        1,
+                        129
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 0,
+            "inputs": [],
+            "name": "serving_default_input_layer_20",
+            "original": "",
+            "type": "Input"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 4096,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 4096,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        32,
+                        1,
+                        32
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 0,
+            "inputs": [
+                "serving_default_input_layer_20"
+            ],
+            "name": "upsample_0",
+            "original": "RESIZE_BILINEAR",
+            "type": "Upsample"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 1036928,
+                "n_params": 1280,
+                "psize": 5120,
+                "rom_output": {
+                    "c_size": 115200,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        15,
+                        128,
+                        15
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 1,
+            "inputs": [
+                "upsample_0"
+            ],
+            "name": "conv2d_1",
+            "original": "CONV_2D",
+            "type": "Conv2D"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 115200,
+                "n_params": 0,
+                "psize": 0,
+                "rom_size": 0
+            },
+            "id": 2,
+            "inputs": [
+                "conv2d_1"
+            ],
+            "name": "nl_2",
+            "original": "LEAKY_RELU",
+            "type": "Nonlinearity"
+        },
+        {
+            "c_id": [
+                1
+            ],
+            "extras": {
+                "n_macc": 115200,
+                "n_params": 0,
+                "psize": 0,
+                "rom_size": 5120
+            },
+            "id": 3,
+            "inputs": [
+                "nl_2"
+            ],
+            "name": "pool_3",
+            "original": "MAX_POOL_2D",
+            "type": "Pool"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 12460096,
+                "n_params": 73792,
+                "psize": 295168,
+                "rom_output": {
+                    "c_size": 9216,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        6,
+                        64,
+                        6
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 4,
+            "inputs": [
+                "pool_3"
+            ],
+            "name": "conv2d_4",
+            "original": "CONV_2D",
+            "type": "Conv2D"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 10816,
+                "n_params": 0,
+                "psize": 0,
+                "rom_size": 0
+            },
+            "id": 5,
+            "inputs": [
+                "conv2d_4"
+            ],
+            "name": "nl_5",
+            "original": "LEAKY_RELU",
+            "type": "Nonlinearity"
+        },
+        {
+            "c_id": [
+                2
+            ],
+            "extras": {
+                "n_macc": 9216,
+                "n_params": 0,
+                "psize": 0,
+                "rom_size": 295168
+            },
+            "id": 6,
+            "inputs": [
+                "nl_5"
+            ],
+            "name": "pool_6",
+            "original": "MAX_POOL_2D",
+            "type": "Pool"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 294944,
+                "n_params": 18464,
+                "psize": 73856,
+                "rom_output": {
+                    "c_size": 512,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        2,
+                        32,
+                        2
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 7,
+            "inputs": [
+                "pool_6"
+            ],
+            "name": "conv2d_7",
+            "original": "CONV_2D",
+            "type": "Conv2D"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 512,
+                "n_params": 0,
+                "psize": 0,
+                "rom_size": 0
+            },
+            "id": 8,
+            "inputs": [
+                "conv2d_7"
+            ],
+            "name": "nl_8",
+            "original": "LEAKY_RELU",
+            "type": "Nonlinearity"
+        },
+        {
+            "c_id": [
+                3
+            ],
+            "extras": {
+                "n_macc": 512,
+                "n_params": 0,
+                "psize": 0,
+                "rom_size": 73856
+            },
+            "id": 9,
+            "inputs": [
+                "nl_8"
+            ],
+            "name": "pool_9",
+            "original": "MAX_POOL_2D",
+            "type": "Pool"
+        },
+        {
+            "c_id": [
+                4
+            ],
+            "extras": {
+                "n_macc": 2064,
+                "n_params": 528,
+                "psize": 2112,
+                "rom_output": {
+                    "c_size": 256,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        2,
+                        16,
+                        2
+                    ]
+                },
+                "rom_size": 2112
+            },
+            "id": 10,
+            "inputs": [
+                "pool_9"
+            ],
+            "name": "conv2d_10",
+            "original": "CONV_2D",
+            "type": "Conv2D"
+        },
+        {
+            "c_id": [
+                5
+            ],
+            "extras": {
+                "n_macc": 64,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 256,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        2,
+                        16,
+                        2
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 11,
+            "inputs": [
+                "conv2d_10"
+            ],
+            "name": "nl_11",
+            "original": "LEAKY_RELU",
+            "type": "Nonlinearity"
+        },
+        {
+            "c_id": [
+                6
+            ],
+            "extras": {
+                "n_macc": 64,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 64,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        1,
+                        16,
+                        1
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 12,
+            "inputs": [
+                "nl_11"
+            ],
+            "name": "pool_12",
+            "original": "MAX_POOL_2D",
+            "type": "Pool"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 0,
+                "n_params": 0,
+                "psize": 0,
+                "rom_size": 0
+            },
+            "id": 13,
+            "inputs": [
+                "pool_12"
+            ],
+            "name": "reshape_13",
+            "original": "RESHAPE",
+            "type": "Reshape"
+        },
+        {
+            "c_id": [
+                7
+            ],
+            "extras": {
+                "n_macc": 0,
+                "n_params": 1024,
+                "psize": 4096,
+                "rom_size": 4352
+            },
+            "id": 14,
+            "inputs": [],
+            "name": "arith_constant10",
+            "original": "",
+            "type": "Placeholder"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 0,
+                "n_params": 64,
+                "psize": 256,
+                "rom_size": 0
+            },
+            "id": 14,
+            "inputs": [],
+            "name": "arith_constant13",
+            "original": "",
+            "type": "Placeholder"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 1088,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 256,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        64
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 14,
+            "inputs": [
+                "reshape_13",
+                "arith_constant10",
+                "arith_constant13"
+            ],
+            "name": "gemm_14",
+            "original": "FULLY_CONNECTED",
+            "type": "Gemm"
+        },
+        {
+            "c_id": [
+                8
+            ],
+            "extras": {
+                "n_macc": 64,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 256,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        64
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 15,
+            "inputs": [
+                "gemm_14"
+            ],
+            "name": "nl_15",
+            "original": "LEAKY_RELU",
+            "type": "Nonlinearity"
+        },
+        {
+            "c_id": [
+                9
+            ],
+            "extras": {
+                "n_macc": 0,
+                "n_params": 4096,
+                "psize": 16384,
+                "rom_size": 16640
+            },
+            "id": 16,
+            "inputs": [],
+            "name": "arith_constant9",
+            "original": "",
+            "type": "Placeholder"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 0,
+                "n_params": 64,
+                "psize": 256,
+                "rom_size": 0
+            },
+            "id": 16,
+            "inputs": [],
+            "name": "arith_constant12",
+            "original": "",
+            "type": "Placeholder"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 4160,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 256,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        64
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 16,
+            "inputs": [
+                "nl_15",
+                "arith_constant9",
+                "arith_constant12"
+            ],
+            "name": "gemm_16",
+            "original": "FULLY_CONNECTED",
+            "type": "Gemm"
+        },
+        {
+            "c_id": [
+                10
+            ],
+            "extras": {
+                "n_macc": 64,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 256,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        64
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 17,
+            "inputs": [
+                "gemm_16"
+            ],
+            "name": "nl_17",
+            "original": "LEAKY_RELU",
+            "type": "Nonlinearity"
+        },
+        {
+            "c_id": [
+                11
+            ],
+            "extras": {
+                "n_macc": 0,
+                "n_params": 512,
+                "psize": 2048,
+                "rom_size": 2080
+            },
+            "id": 18,
+            "inputs": [],
+            "name": "arith_constant8",
+            "original": "",
+            "type": "Placeholder"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 0,
+                "n_params": 8,
+                "psize": 32,
+                "rom_size": 0
+            },
+            "id": 18,
+            "inputs": [],
+            "name": "arith_constant11",
+            "original": "",
+            "type": "Placeholder"
+        },
+        {
+            "c_id": [],
+            "extras": {
+                "n_macc": 520,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 32,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        8
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 18,
+            "inputs": [
+                "nl_17",
+                "arith_constant8",
+                "arith_constant11"
+            ],
+            "name": "gemm_18",
+            "original": "FULLY_CONNECTED",
+            "type": "Gemm"
+        },
+        {
+            "c_id": [
+                12
+            ],
+            "extras": {
+                "n_macc": 120,
+                "n_params": 0,
+                "psize": 0,
+                "rom_output": {
+                    "c_size": 32,
+                    "fmt": {
+                        "format": "float"
+                    },
+                    "shape": [
+                        8
+                    ]
+                },
+                "rom_size": 0
+            },
+            "id": 19,
+            "inputs": [
+                "gemm_18"
+            ],
+            "name": "nl_19",
+            "original": "SOFTMAX",
+            "type": "Nonlinearity"
+        }
+    ],
+    "model_files": [
+        "/home/kasia/tra/tra_test_82test_acc_PioterSTFT_float_float_float.tflite"
+    ],
+    "model_n_params": 99832,
+    "model_name": "tra_test_82test_acc_PioterSTFT_float_float_float",
+    "model_size": 399328,
+    "model_type": "tflite",
+    "name": "network_1",
+    "outputs": [
+        "nl_19"
+    ],
+    "ram_io_size": [
+        0,
+        0
+    ],
+    "ram_size": 150052,
+    "report_version": 1.1,
+    "rom_cfact": 1.0,
+    "rom_heap_inspector": 2048,
+    "rom_inputs": [
+        {
+            "c_size": 31476,
+            "c_type": "float",
+            "name": "serving_default_input_layer_20"
+        }
+    ],
+    "rom_n_macc": 14309168,
+    "rom_outputs": [
+        {
+            "c_size": 32,
+            "c_type": "float",
+            "name": "nl_19"
+        }
+    ],
+    "rom_size": 399328,
+    "strategy": "",
+    "tools_api_version": "1.0.0-19895",
+    "tools_version": "1.0.0-19895",
+    "val_error": -1.0,
+    "val_error_desc": "None (None) #-1",
+    "val_metrics": []
+}

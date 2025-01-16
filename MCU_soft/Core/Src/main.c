@@ -24,6 +24,8 @@
 #include "usart.h"
 #include "usb_otg.h"
 #include "gpio.h"
+#include "app_x-cube-ai.h"
+#include "tra_network.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -33,17 +35,25 @@
 #include "fir_filter.h"
 #include "decimation_filter.h"
 #include "liquid_crystal_i2c.h"
+#include "stft_solver.h"
+
+#include <stdio.h>
+
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+
 typedef enum {
   WAITING,
-  STARTED,
-  RECORDED,
-  COMPLETED
+  STARTED_RECORDING,
+  STARTED_STFT,
+  STARTED_TRANSMITTING_DATA,
+  STARTED_TRANSMITTING_STFT,
+  COMPLETED,
+  RESULT
 } MIKE_Status;
 
 /* USER CODE END PTD */
@@ -64,7 +74,7 @@ typedef enum {
 
 #define SAMPLE_RATE 48000
 
-#define OUTPUT_SAMPLE_RATE_16kHz
+#define OUTPUT_SAMPLE_RATE_8kHz
 //#define OUTPUT_SAMPLE_RATE_8kHz
 
 #if defined(OUTPUT_SAMPLE_RATE_8kHz) && !defined(OUTPUT_SAMPLE_RATE_16kHz)
@@ -108,17 +118,51 @@ typedef enum {
 
 
 uint32_t counter = 0;
-uint32_t counter2 = 0;
-uint8_t record_started = 0;
 
 
 uint32_t adc_val = 0;
 char message[32];
-char message2[5];
 MIKE_Status status = WAITING;
 
 FIR_filter lp_input;
 DecimationFilter decimation_filter;
+
+
+#define FFT_SIZE 256
+#define HOP_SIZE 128
+#define STFT_FILTER_MASK_SIZE 4
+
+const float hann_window[FFT_SIZE] = {
+    0.0000000, 0.0001518, 0.0006070, 0.0013654, 0.0024265, 0.0037897, 0.0054542, 0.0074189, 0.0096826, 0.0122440,
+    0.0151015, 0.0182534, 0.0216978, 0.0254325, 0.0294554, 0.0337639, 0.0383554, 0.0432273, 0.0483764, 0.0537997,
+    0.0594939, 0.0654555, 0.0716810, 0.0781664, 0.0849080, 0.0919015, 0.0991429, 0.1066275, 0.1143510, 0.1223086,
+    0.1304955, 0.1389068, 0.1475372, 0.1563817, 0.1654347, 0.1746908, 0.1841445, 0.1937899, 0.2036212, 0.2136324,
+    0.2238175, 0.2341703, 0.2446844, 0.2553535, 0.2661712, 0.2771308, 0.2882257, 0.2994492, 0.3107945, 0.3222546,
+    0.3338226, 0.3454915, 0.3572542, 0.3691036, 0.3810324, 0.3930335, 0.4050995, 0.4172231, 0.4293969, 0.4416136,
+    0.4538658, 0.4661460, 0.4784467, 0.4907605, 0.5030800, 0.5153975, 0.5277057, 0.5399971, 0.5522642, 0.5644996,
+    0.5766958, 0.5888455, 0.6009412, 0.6129756, 0.6249415, 0.6368315, 0.6486384, 0.6603551, 0.6719745, 0.6834894,
+    0.6948929, 0.7061782, 0.7173382, 0.7283663, 0.7392558, 0.7500000, 0.7605924, 0.7710267, 0.7812964, 0.7913953,
+    0.8013173, 0.8110564, 0.8206067, 0.8299623, 0.8391176, 0.8480670, 0.8568051, 0.8653266, 0.8736263, 0.8816991,
+    0.8895403, 0.8971449, 0.9045085, 0.9116265, 0.9184946, 0.9251086, 0.9314645, 0.9375585, 0.9433868, 0.9489460,
+    0.9542326, 0.9592435, 0.9639755, 0.9684259, 0.9725919, 0.9764710, 0.9800608, 0.9833592, 0.9863641, 0.9890738,
+    0.9914865, 0.9936009, 0.9954156, 0.9969296, 0.9981418, 0.9990517, 0.9996585, 0.9999621, 0.9999621, 0.9996585,
+    0.9990517, 0.9981418, 0.9969296, 0.9954156, 0.9936009, 0.9914865, 0.9890738, 0.9863641, 0.9833592, 0.9800608,
+    0.9764710, 0.9725919, 0.9684259, 0.9639755, 0.9592435, 0.9542326, 0.9489460, 0.9433868, 0.9375585, 0.9314645,
+    0.9251086, 0.9184946, 0.9116265, 0.9045085, 0.8971449, 0.8895403, 0.8816991, 0.8736263, 0.8653266, 0.8568051,
+    0.8480670, 0.8391176, 0.8299623, 0.8206067, 0.8110564, 0.8013173, 0.7913953, 0.7812964, 0.7710267, 0.7605924,
+    0.7500000, 0.7392558, 0.7283663, 0.7173382, 0.7061782, 0.6948929, 0.6834894, 0.6719745, 0.6603551, 0.6486384,
+    0.6368315, 0.6249415, 0.6129756, 0.6009412, 0.5888455, 0.5766958, 0.5644996, 0.5522642, 0.5399971, 0.5277057,
+    0.5153975, 0.5030800, 0.4907605, 0.4784467, 0.4661460, 0.4538658, 0.4416136, 0.4293969, 0.4172231, 0.4050995,
+    0.3930335, 0.3810324, 0.3691036, 0.3572542, 0.3454915, 0.3338226, 0.3222546, 0.3107945, 0.2994492, 0.2882257,
+    0.2771308, 0.2661712, 0.2553535, 0.2446844, 0.2341703, 0.2238175, 0.2136324, 0.2036212, 0.1937899, 0.1841445,
+    0.1746908, 0.1654347, 0.1563817, 0.1475372, 0.1389068, 0.1304955, 0.1223086, 0.1143510, 0.1066275, 0.0991429,
+    0.0919015, 0.0849080, 0.0781664, 0.0716810, 0.0654555, 0.0594939, 0.0537997, 0.0483764, 0.0432273, 0.0383554,
+    0.0337639, 0.0294554, 0.0254325, 0.0216978, 0.0182534, 0.0151015, 0.0122440, 0.0096826, 0.0074189, 0.0054542,
+    0.0037897, 0.0024265, 0.0013654, 0.0006070, 0.0001518, 0.0000000
+};
+
+const float stft_filter_mask[] = {0.0010000, 0.1882551, 0.6112605, 0.9504844};
+STFT_with_filter_solver stft_solver;
 
 /* USER CODE END PV */
 
@@ -145,25 +189,19 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
   if(hadc == &hadc1) {
     adc_val = HAL_ADC_GetValue(&hadc1);
     const uint8_t decimation_status = DecimationFilterUpdate(&decimation_filter, (float)adc_val);
-    if(status == STARTED && counter < AUDIO_LENGTH_2) {
+    if(status == STARTED_RECORDING && counter < AUDIO_LENGTH_2) {
 
       if(decimation_status == 1) {
         // Toggle the Green LED
         HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-
         audio2[counter] = decimation_filter.out;
         ++counter;
       }
     }
-    else if(status == STARTED && counter >= AUDIO_LENGTH_2) {
-      status = COMPLETED;
+    else if(status == STARTED_RECORDING && counter >= AUDIO_LENGTH_2) {
+      status = STARTED_STFT;
       counter = 0;
-      HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-
-      HD44780_Clear();
-      HD44780_Home();
-      HD44780_PrintStr("Transmitting...");
 
       if(HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1) != HAL_OK) {
         Error_Handler();
@@ -177,7 +215,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
   if(status == WAITING) {
     HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
     counter = 0;
-    status = STARTED;
+    status = STARTED_RECORDING;
 
     HD44780_Clear();
     HD44780_Home();
@@ -226,10 +264,12 @@ int main(void)
   MX_USB_OTG_FS_PCD_Init();
   MX_USART3_UART_Init();
   MX_I2C1_Init();
+  MX_X_CUBE_AI_Init();
   /* USER CODE BEGIN 2 */
 
   FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response, INPUT_FIR_BUFFER_LENGTH);
   DecimationFilterInit(&decimation_filter, &lp_input, decimation_factor);
+  STFT_Init(&stft_solver, FFT_SIZE, HOP_SIZE, AUDIO_LENGTH_2, hann_window, STFT_FILTER_MASK_SIZE, stft_filter_mask);
 
   if(HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
     Error_Handler();
@@ -261,30 +301,100 @@ int main(void)
   {
     HAL_Delay(100);
     HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+    uint8_t length;
 
-    if(status == COMPLETED) {
-      HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+    if(status == STARTED_STFT) {
+    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+    	HD44780_Clear();
+		HD44780_Home();
+		HD44780_PrintStr("Started STFT...");
+    	STFT_Process(&stft_solver, audio2);
 
-      for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
-        const int length = snprintf(message, sizeof(message), "%05d,%05.5f\r\n", i, audio2[i]);
-        if (length > 0 && length < sizeof(message)) {
-          HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-          HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
-          HAL_Delay(1);
-        }
-      }
-      status = WAITING;
-      if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-        Error_Handler();
-      }
-
-      HD44780_Clear();
-      HD44780_Home();
-      HD44780_PrintStr("Waiting...");
-      HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+    	status = STARTED_TRANSMITTING_DATA;
+    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
     }
-    /* USER CODE END WHILE */
 
+    if(status == STARTED_TRANSMITTING_DATA) {
+		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+
+		HD44780_Clear();
+		HD44780_Home();
+		HD44780_PrintStr("Transmitting");
+		HD44780_SetCursor(0, 1);
+		HD44780_PrintStr("data...");
+
+		length = snprintf(message, sizeof(message), "AUDIO_START\r\n");
+		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+		HAL_Delay(1);
+
+		for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
+			length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, audio2[i]);
+			if (length > 0 && length < sizeof(message)) {
+			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			  HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+			  HAL_Delay(1);
+			}
+		}
+		length = snprintf(message, sizeof(message), "AUDIO_STOP\r\n");
+		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+		HAL_Delay(1);
+
+		status = STARTED_TRANSMITTING_STFT;
+
+    }
+
+    if(status == STARTED_TRANSMITTING_STFT) {
+		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+
+		HD44780_Clear();
+		HD44780_Home();
+		HD44780_PrintStr("Transmitting");
+		HD44780_SetCursor(0, 1);
+		HD44780_PrintStr("STFT...");
+
+		length = snprintf(message, sizeof(message), "STFT_START\r\n");
+		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+		HAL_Delay(1);
+
+		for(uint32_t i = 0; i < stft_solver.out_length; ++i) {
+			length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, stft_solver.out[i]);
+			if (length > 0 && length < sizeof(message)) {
+			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			  HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+			  HAL_Delay(1);
+			}
+		}
+
+		length = snprintf(message, sizeof(message), "STFT_STOP\r\n");
+		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+		HAL_Delay(1);
+
+		HD44780_Clear();
+		HD44780_Home();
+		HD44780_PrintStr("Waiting...");
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
+		status = RESULT;
+		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+			Error_Handler();
+		}
+
+    }
+
+    if(status == RESULT) {
+
+
+    		HD44780_Clear();
+    		HD44780_Home();
+    		STFT_Normalize(&stft_solver);
+    		MX_X_CUBE_AI_Process(stft_solver.out);
+    		status = WAITING;
+
+        }
+
+    /* USER CODE END WHILE */
+//    MX_X_CUBE_AI_Process();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

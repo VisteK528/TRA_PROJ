@@ -1,0 +1,2 @@
+../Core/Src/decimation_filter.c:3:6:DecimationFilterInit	0	static
+../Core/Src/decimation_filter.c:11:9:DecimationFilterUpdate	8	static

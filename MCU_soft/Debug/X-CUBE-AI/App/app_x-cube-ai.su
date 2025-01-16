@@ -1,0 +1,3 @@
+../X-CUBE-AI/App/app_x-cube-ai.c:197:5:post_process	0	static
+../X-CUBE-AI/App/app_x-cube-ai.c:213:6:MX_X_CUBE_AI_Init	16	static
+../X-CUBE-AI/App/app_x-cube-ai.c:223:6:MX_X_CUBE_AI_Process	16	static
