@@ -55,9 +55,11 @@ if __name__ == "__main__":
     # Data acquisition setup
     print("What word will be recorded?")
     _, chosen_word = choose_from_available(selected_labels_dict)
-    print()
-    print("At what sampling frequency the word will be recorded?")
-    _, chosen_sampling = choose_from_available(sampling_strings_dict)
+    # print()
+    # print("At what sampling frequency the word will be recorded?")
+    # _, chosen_sampling = choose_from_available(sampling_str7ings_dict)
+
+    chosen_sampling = "8kHz"
 
     OUTPUT_FILE_BASE = f"{chosen_word}_fs={chosen_sampling}"
     OUTPUT_FILE = get_unique_filename(f"data/audio/{chosen_sampling}_sampling/", OUTPUT_FILE_BASE, "csv")

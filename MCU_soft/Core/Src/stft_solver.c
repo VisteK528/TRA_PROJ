@@ -45,12 +45,13 @@ uint8_t STFT_Process(STFT_with_filter_solver *stft_solver, const float *signal) 
 
         arm_rfft_fast_f32(&fft_instance, fft_output, fft_output, 0);
         for (uint16_t sample_idx = 0; sample_idx < frame_length; sample_idx++) {
-        	if (sample_idx < stft_solver->stft_filter_mask_length) {
-        		stft_solver->out[frame_idx * frame_length + sample_idx] =
-					fft_output[sample_idx] * stft_solver->stft_filter_mask[sample_idx];
-			} else {
-				stft_solver->out[frame_idx * frame_length + sample_idx] = fft_output[sample_idx];
-			}
+//        	if (sample_idx < stft_solver->stft_filter_mask_length) {
+//        		stft_solver->out[frame_idx * frame_length + sample_idx] =
+//					fft_output[sample_idx] * stft_solver->stft_filter_mask[sample_idx];
+//			} else {
+//				stft_solver->out[frame_idx * frame_length + sample_idx] = fft_output[sample_idx];
+//			}
+            stft_solver->out[frame_idx * frame_length + sample_idx] = fft_output[sample_idx];
         }
     }
     return 0;

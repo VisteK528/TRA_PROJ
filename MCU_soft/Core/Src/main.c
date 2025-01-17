@@ -71,6 +71,8 @@ typedef enum {
 
 /* USER CODE BEGIN PV */
 
+#define CCMRAM_SECTION __attribute__((section(".ccmram")))
+
 #define SAMPLE_RATE 48000
 
 #define OUTPUT_SAMPLE_RATE_8kHz
@@ -78,7 +80,7 @@ typedef enum {
 
 #if defined(OUTPUT_SAMPLE_RATE_8kHz) && !defined(OUTPUT_SAMPLE_RATE_16kHz)
   #define AUDIO_LENGTH_2 8000
-  float audio2[AUDIO_LENGTH_2];
+ float audio2[AUDIO_LENGTH_2];
 
   #define INPUT_FIR_BUFFER_LENGTH 61
   float lp_input_buffer[INPUT_FIR_BUFFER_LENGTH];
@@ -168,11 +170,50 @@ AI_ALIGNED(4) static ai_i8 activations[AI_WORD_CLASSIFIER_DATA_ACTIVATIONS_SIZE]
 AI_ALIGNED(4) static ai_float input_data[AI_WORD_CLASSIFIER_IN_1_SIZE];         // Input buffer
 AI_ALIGNED(4) static ai_float output_data[AI_WORD_CLASSIFIER_OUT_1_SIZE];
 
+float stft_buffer[AUDIO_LENGTH_2];
+
+ai_buffer* ai_input = NULL;
+ai_buffer* ai_output = NULL;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+
+
+void downsample_image(const float *input_image, int input_height, int input_width,
+                      float *output_image, int target_height, int target_width) {
+    float scale_height = (float)input_height / target_height;
+    float scale_width = (float)input_width / target_width;
+
+    for (int y = 0; y < target_height; y++) {
+        for (int x = 0; x < target_width; x++) {
+            // Map target pixel to source coordinates
+            float src_y = y * scale_height;
+            float src_x = x * scale_width;
+
+            int y0 = (int)src_y;
+            int x0 = (int)src_x;
+            int y1 = y0 + 1 < input_height ? y0 + 1 : y0;
+            int x1 = x0 + 1 < input_width ? x0 + 1 : x0;
+
+            // Compute interpolation weights
+            float dy = src_y - y0;
+            float dx = src_x - x0;
+
+            // Bilinear interpolation
+            float value =
+                    input_image[y0 * input_width + x0] * (1 - dx) * (1 - dy) +
+                    input_image[y0 * input_width + x1] * dx * (1 - dy) +
+                    input_image[y1 * input_width + x0] * (1 - dx) * dy +
+                    input_image[y1 * input_width + x1] * dx * dy;
+
+            output_image[y * target_width + x] = value;
+        }
+    }
+}
+
 
 /* USER CODE END PFP */
 
@@ -273,7 +314,7 @@ int main(void)
 
   FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response, INPUT_FIR_BUFFER_LENGTH);
   DecimationFilterInit(&decimation_filter, &lp_input, decimation_factor);
-  STFT_Init(&stft_solver, FFT_SIZE, HOP_SIZE, AUDIO_LENGTH_2, hann_window, STFT_FILTER_MASK_SIZE, stft_filter_mask, input_data);
+  STFT_Init(&stft_solver, FFT_SIZE, HOP_SIZE, AUDIO_LENGTH_2, hann_window, STFT_FILTER_MASK_SIZE, stft_filter_mask, stft_buffer);
 
   if(HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
     Error_Handler();
@@ -303,6 +344,12 @@ int main(void)
         Error_Handler();
     }
 
+    ai_input = ai_word_classifier_inputs_get(network, NULL);
+    ai_input->data = input_data;
+
+    ai_output = ai_word_classifier_outputs_get(network, NULL);
+    ai_output->data = output_data;
+
 
   /* Initialize */
   HD44780_Init(2);
@@ -327,13 +374,35 @@ int main(void)
 		HD44780_Home();
 		HD44780_PrintStr("Started STFT...");
     	STFT_Process(&stft_solver, audio2);
+        downsample_image(stft_buffer, 129, 61, input_data, 32, 32);
 
-//        for (int i = 0; i < AI_WORD_CLASSIFIER_IN_1_SIZE; i++) {
-//            ((float*)input_data)[i] = audio2[i];
-//        }
 
-    	status = STARTED_NEURAL_NETWORK_PREDICTION;
+    	status = STARTED_TRANSMITTING_DATA;
     	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+    }
+
+  if(status == STARTED_TRANSMITTING_DATA) {
+		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+
+		HD44780_Clear();
+		HD44780_Home();
+		HD44780_PrintStr("Transmitting");
+		HD44780_SetCursor(0, 1);
+		HD44780_PrintStr("data...");
+
+
+//		for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
+//			length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, audio2[i]);
+//			if (length > 0 && length < sizeof(message)) {
+//			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//			  HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
+//			  HAL_Delay(1);
+//			}
+//		}
+
+
+		status = STARTED_NEURAL_NETWORK_PREDICTION;
+
     }
 
     if(status == STARTED_NEURAL_NETWORK_PREDICTION) {
@@ -344,11 +413,11 @@ int main(void)
         ai_error err;
 
         // Define input and output buffers
-        ai_buffer* ai_input = ai_word_classifier_inputs_get(network, NULL);
-        ai_input->data = input_data;
-
-        ai_buffer* ai_output = ai_word_classifier_outputs_get(network, NULL);
-        ai_output->data = output_data;
+//        ai_buffer* ai_input = ai_word_classifier_inputs_get(network, NULL);
+//        ai_input->data = input_data;
+//
+//        ai_buffer* ai_output = ai_word_classifier_outputs_get(network, NULL);
+//        ai_output->data = output_data;
 
 
         // Run inference
@@ -362,6 +431,7 @@ int main(void)
         // Determine the predicted class for classification
         int predicted_class = 0;
         float max_value = output_data[0];
+        output_data[4] *= 0.6f;
         volatile float probability = 0.0f;
         for (int i = 0; i < AI_WORD_CLASSIFIER_OUT_1_SIZE; i++) {
             probability = output_data[i];
@@ -494,6 +564,7 @@ int main(void)
 
     /* USER CODE END WHILE */
 
+  MX_X_CUBE_AI_Process();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

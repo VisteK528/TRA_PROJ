@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    word_classifier.h
   * @author  AST Embedded Analytics Research Platform
-  * @date    2025-01-16T21:03:10+0100
+  * @date    2025-01-18T00:43:13+0100
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention
@@ -23,7 +23,7 @@
 
 /******************************************************************************/
 #define AI_WORD_CLASSIFIER_MODEL_NAME          "word_classifier"
-#define AI_WORD_CLASSIFIER_ORIGIN_MODEL_NAME   "tra_medium_model_86test_acc_8khz_pioterstft_float_float_int"
+#define AI_WORD_CLASSIFIER_ORIGIN_MODEL_NAME   "tra_model_for_optimization5"
 
 /******************************************************************************/
 #define AI_WORD_CLASSIFIER_ACTIVATIONS_ALIGNMENT   (4)
@@ -44,11 +44,11 @@ AI_DEPRECATED
   AI_WORD_CLASSIFIER_IN_1_SIZE_BYTES, \
 }
 #define AI_WORD_CLASSIFIER_IN_1_FORMAT      (AI_BUFFER_FORMAT_FLOAT)
-#define AI_WORD_CLASSIFIER_IN_1_HEIGHT      (129)
-#define AI_WORD_CLASSIFIER_IN_1_WIDTH       (61)
+#define AI_WORD_CLASSIFIER_IN_1_HEIGHT      (32)
+#define AI_WORD_CLASSIFIER_IN_1_WIDTH       (32)
 #define AI_WORD_CLASSIFIER_IN_1_CHANNEL     (1)
-#define AI_WORD_CLASSIFIER_IN_1_SIZE        (7869)
-#define AI_WORD_CLASSIFIER_IN_1_SIZE_BYTES  (31476)
+#define AI_WORD_CLASSIFIER_IN_1_SIZE        (1024)
+#define AI_WORD_CLASSIFIER_IN_1_SIZE_BYTES  (4096)
 
 /******************************************************************************/
 #define AI_WORD_CLASSIFIER_OUT_NUM       (1)
@@ -69,7 +69,7 @@ AI_DEPRECATED
 #define AI_WORD_CLASSIFIER_OUT_1_SIZE_BYTES  (32)
 
 /******************************************************************************/
-#define AI_WORD_CLASSIFIER_N_NODES (18)
+#define AI_WORD_CLASSIFIER_N_NODES (11)
 
 
 AI_API_DECLARE_BEGIN

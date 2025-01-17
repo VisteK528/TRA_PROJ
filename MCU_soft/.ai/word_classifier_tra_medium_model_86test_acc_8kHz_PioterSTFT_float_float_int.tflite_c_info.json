@@ -2053,35 +2053,35 @@
   "environment": {
     "device": null,
     "generated_model": {
-      "generated_time": "2025-01-16T21:03:10+0100",
+      "generated_time": "2025-01-16T23:58:56+0100",
       "model_files": [
         {
           "name": "word_classifier_data_params.h",
-          "signature": "0xcab26a4c24621a2ad4613b88aaf110af"
+          "signature": "0xf4af63502c788cddc057f3435b82c668"
         },
         {
           "name": "word_classifier_data_params.c",
-          "signature": "0x0f2a9474327ecf2b46c35623bd84177e"
+          "signature": "0x3ef0d09dba27d349d1c72017298b8869"
         },
         {
           "name": "word_classifier_data.h",
-          "signature": "0x72296ca17915864acd5b2b7530641f76"
+          "signature": "0xeb7a9bcd67b5598659f0116e3a945d61"
         },
         {
           "name": "word_classifier_data.c",
-          "signature": "0xb6295fa613c6603097b138d57c13f0c3"
+          "signature": "0x5a2815db43fe43b5c0254467fc490a2e"
         },
         {
           "name": "word_classifier_config.h",
-          "signature": "0xe709bfff289dda3026487fcae8276b47"
+          "signature": "0xf9d219a69ce0371a0916602f9f0f6384"
         },
         {
           "name": "word_classifier.h",
-          "signature": "0x60c3749bdac4947e1e68840c0f914e8b"
+          "signature": "0x90973a6d0d4f3228b6a14ade262fa689"
         },
         {
           "name": "word_classifier.c",
-          "signature": "0x0617d2822ec522d1a2782d478385e5d5"
+          "signature": "0x03d3c6f306119d379ccaec142a0b2a1e"
         }
       ],
       "n_params": null,
@@ -2089,11 +2089,11 @@
       "size": null,
       "type": null
     },
-    "network_signature": "0xe47cf9aa1227b4e4",
+    "network_signature": "0x9c0368317e3ebf7c",
     "test_name": "",
     "tools": [
       {
-        "arguments": "generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/to_be_deployed/tra_medium_model_86test_acc_8kHz_PioterSTFT_float_float_int.tflite --compression none --verbosity 1 --allocate-inputs -O time --allocate-outputs --workspace /tmp/mxAI_workspace1308691855124115214709143094526 --output /home/vistek528/.stm32cubemx/word_classifier_output",
+        "arguments": "generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/to_be_deployed/tra_medium_model_86test_acc_8kHz_PioterSTFT_float_float_int.tflite --compression none --verbosity 1 --allocate-inputs -O time --allocate-outputs --workspace /tmp/mxAI_workspace1185466776512014287583952382610579 --output /home/vistek528/.stm32cubemx/word_classifier_output",
         "environment": [
           "STATS_TYPE=X-CUBE-AI"
         ],

@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    word_classifier_data.c
   * @author  AST Embedded Analytics Research Platform
-  * @date    2025-01-16T21:03:10+0100
+  * @date    2025-01-18T00:43:13+0100
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention
@@ -21,13 +21,13 @@
 AI_API_DECLARE_BEGIN
 ai_buffer g_word_classifier_data_map_activations[AI_WORD_CLASSIFIER_DATA_ACTIVATIONS_COUNT] = {
   AI_BUFFER_INIT(AI_FLAG_NONE,  AI_BUFFER_FORMAT_U8,
-    AI_BUFFER_SHAPE_INIT(AI_SHAPE_BCWH, 4, 1, 45632, 1, 1),
-    45632, NULL, NULL),    /* heap_overlay_pool */
+    AI_BUFFER_SHAPE_INIT(AI_SHAPE_BCWH, 4, 1, 22784, 1, 1),
+    22784, NULL, NULL),    /* heap_overlay_pool */
   };
 ai_buffer g_word_classifier_data_map_weights[AI_WORD_CLASSIFIER_DATA_WEIGHTS_COUNT] = {
   AI_BUFFER_INIT(AI_FLAG_NONE,  AI_BUFFER_FORMAT_U8,
-    AI_BUFFER_SHAPE_INIT(AI_SHAPE_BCWH, 4, 1, 50416, 1, 1),
-    50416, NULL, s_word_classifier_weights_array_u64),   /* weights_array */
+    AI_BUFFER_SHAPE_INIT(AI_SHAPE_BCWH, 4, 1, 59632, 1, 1),
+    59632, NULL, s_word_classifier_weights_array_u64),   /* weights_array */
   };
 
 

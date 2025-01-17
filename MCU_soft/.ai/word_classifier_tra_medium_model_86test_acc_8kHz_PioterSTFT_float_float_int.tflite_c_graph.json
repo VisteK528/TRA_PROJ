@@ -147,7 +147,7 @@
         }
     },
     "activations_alignment": 4,
-    "arguments": "generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/to_be_deployed/tra_medium_model_86test_acc_8kHz_PioterSTFT_float_float_int.tflite --compression none --verbosity 1 --allocate-inputs -O time --allocate-outputs --workspace /tmp/mxAI_workspace1308691855124115214709143094526 --output /home/vistek528/.stm32cubemx/word_classifier_output",
+    "arguments": "generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/to_be_deployed/tra_medium_model_86test_acc_8kHz_PioterSTFT_float_float_int.tflite --compression none --verbosity 1 --allocate-inputs -O time --allocate-outputs --workspace /tmp/mxAI_workspace1185466776512014287583952382610579 --output /home/vistek528/.stm32cubemx/word_classifier_output",
     "c_activations_count": 1,
     "c_arrays": [
         {
@@ -2454,7 +2454,7 @@
         ]
     },
     "data_alignment": 4,
-    "date_time": "2025-01-16T21:03:10+0100",
+    "date_time": "2025-01-16T23:58:56+0100",
     "inputs": [
         "serving_default_input_layer_50_output"
     ],

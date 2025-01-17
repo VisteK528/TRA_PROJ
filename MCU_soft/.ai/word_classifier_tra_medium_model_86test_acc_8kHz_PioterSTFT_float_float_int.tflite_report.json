@@ -1,7 +1,7 @@
 {
     "_allocate_inputs": 4,
     "_allocate_outputs": 4,
-    "cli_parameters": "generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/to_be_deployed/tra_medium_model_86test_acc_8kHz_PioterSTFT_float_float_int.tflite --compression none --verbosity 1 --allocate-inputs -O time --allocate-outputs --workspace /tmp/mxAI_workspace1308691855124115214709143094526 --output /home/vistek528/.stm32cubemx/word_classifier_output",
+    "cli_parameters": "generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/to_be_deployed/tra_medium_model_86test_acc_8kHz_PioterSTFT_float_float_int.tflite --compression none --verbosity 1 --allocate-inputs -O time --allocate-outputs --workspace /tmp/mxAI_workspace1185466776512014287583952382610579 --output /home/vistek528/.stm32cubemx/word_classifier_output",
     "cli_version": {
         "extra": "19895",
         "major": 1,
@@ -11,7 +11,7 @@
     "cli_version_str": "1.0.0-19895",
     "code_size": 0,
     "compression": [],
-    "date_time": "2025-01-16T21:03:10+0100",
+    "date_time": "2025-01-16T23:58:56+0100",
     "error": 0,
     "error_str": [],
     "exec_cmd": "generate",
