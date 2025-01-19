@@ -35,6 +35,7 @@
 #include "decimation_filter.h"
 #include "liquid_crystal_i2c.h"
 #include "stft_solver.h"
+#include "net_utils.h"
 
 #include "word_classifier.h"
 #include "word_classifier_data.h"
@@ -49,6 +50,7 @@ typedef enum {
   WAITING,
   STARTED_RECORDING,
   STARTED_STFT,
+  STARTED_TRANSMITTING_RESIZED,
   STARTED_TRANSMITTING_DATA,
   STARTED_TRANSMITTING_STFT,
   STARTED_NEURAL_NETWORK_PREDICTION,
@@ -131,6 +133,7 @@ DecimationFilter decimation_filter;
 
 #define FFT_SIZE 256
 #define HOP_SIZE 128
+#define STFT_ARRAY_LENGTH 7869
 #define STFT_FILTER_MASK_SIZE 4
 
 const float hann_window[FFT_SIZE] = {
@@ -165,21 +168,22 @@ const float hann_window[FFT_SIZE] = {
 const float stft_filter_mask[] = {0.0010000, 0.1882551, 0.6112605, 0.9504844};
 STFT_with_filter_solver stft_solver;
 
+// Network setup
+
+const char available_words[4][6] = {
+        "Go",
+        "Left",
+        "Right",
+        "Stop"
+};
+
 static ai_handle network = AI_HANDLE_NULL;
-AI_ALIGNED(4) static ai_i8 activations[AI_WORD_CLASSIFIER_DATA_ACTIVATIONS_SIZE];  // Memory for activations
-AI_ALIGNED(4) static ai_float input_data[AI_WORD_CLASSIFIER_IN_1_SIZE];         // Input buffer
-AI_ALIGNED(4) static ai_float output_data[AI_WORD_CLASSIFIER_OUT_1_SIZE];
+ai_u8 activations[AI_WORD_CLASSIFIER_DATA_ACTIVATIONS_SIZE];  // Memory for activations
+ai_float input_data[AI_WORD_CLASSIFIER_IN_1_SIZE];         // Input buffer
+ai_float output_data[AI_WORD_CLASSIFIER_OUT_1_SIZE];
 
-float output_float[AI_WORD_CLASSIFIER_OUT_1_SIZE] = {};
-
-float input_scale = 0.169842422f;
-float intput_zero_point = -128.f;
-
-float output_scale = 0.00390625f;  // Uzyskane z modelu
-float output_zero_point = -128.f;    // Uzyskane z modelu
-
+float stft_complex_buffer[STFT_ARRAY_LENGTH*2];
 float stft_buffer[AUDIO_LENGTH_2];
-float stft_buffer_resized[32*32];
 
 ai_buffer* ai_input;
 ai_buffer* ai_output;
@@ -189,68 +193,6 @@ ai_buffer* ai_output;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
-
-// Helper function to get the max of two values
-float max(float a, float b) {
-    return a > b ? a : b;
-}
-
-// Helper function to get the min of two values
-float min(float a, float b) {
-    return a < b ? a : b;
-}
-
-// Function to downsample an image
-void downsample_image_fixed(
-        const float *input_image, int input_height, int input_width,
-        float *output_image, int target_height, int target_width) {
-
-    // Calculate scaling factors
-    float scale_height = (float)input_height / target_height;
-    float scale_width = (float)input_width / target_width;
-
-    // Iterate over each pixel in the target image
-    for (int y = 0; y < target_height; y++) {
-        for (int x = 0; x < target_width; x++) {
-            // Map target pixel to source coordinates
-            float src_y = (y + 0.5f) * scale_height - 0.5f;
-            float src_x = (x + 0.5f) * scale_width - 0.5f;
-
-            // Calculate integer bounding box of the source coordinates
-            int y0 = (int)floor(src_y);
-            int x0 = (int)floor(src_x);
-            int y1 = min(y0 + 1, input_height - 1);
-            int x1 = min(x0 + 1, input_width - 1);
-
-            // Handle edge cases for the coordinates
-            y0 = max(0, y0);
-            x0 = max(0, x0);
-
-            // Compute interpolation weights
-            float dy = src_y - y0;
-            float dx = src_x - x0;
-
-            // Bilinear interpolation
-            float v00 = input_image[y0 * input_width + x0];
-            float v01 = input_image[y0 * input_width + x1];
-            float v10 = input_image[y1 * input_width + x0];
-            float v11 = input_image[y1 * input_width + x1];
-
-            float value =
-                    v00 * (1 - dx) * (1 - dy) +
-                    v01 * dx * (1 - dy) +
-                    v10 * (1 - dx) * dy +
-                    v11 * dx * dy;
-
-            // Ensure no negative values
-            value = max(0.0f, value);
-
-            // Assign to the output image
-            output_image[y * target_width + x] = value;
-        }
-    }
-}
 
 
 /* USER CODE END PFP */
@@ -369,25 +311,15 @@ int main(void) {
         Error_Handler();
     }
 
+    const ai_handle acts[] = { activations };
+    ai_word_classifier_create_and_init(&network, acts, NULL);
 
-    // Create the AI network
-    ai_word_classifier_create(&network, AI_WORD_CLASSIFIER_DATA_CONFIG);
-
-    // Initialize the AI network with parameters
-    const ai_network_params params = {
-            AI_WORD_CLASSIFIER_DATA_WEIGHTS(ai_word_classifier_data_weights_get()),
-            AI_WORD_CLASSIFIER_DATA_ACTIVATIONS(activations)
-    };
-
-    if (!ai_word_classifier_init(network, &params)) {
-        Error_Handler();
-    }
 
     ai_input = ai_word_classifier_inputs_get(network, NULL);
-    ai_input->data = input_data;
+    ai_input[0].data = AI_HANDLE_PTR(input_data);
 
     ai_output = ai_word_classifier_outputs_get(network, NULL);
-    ai_output->data = output_data;
+    ai_output[0].data = AI_HANDLE_PTR(output_data);
 
 
     /* Initialize */
@@ -411,14 +343,13 @@ int main(void) {
             HD44780_Clear();
             HD44780_Home();
             HD44780_PrintStr("Started STFT...");
-            STFT_Process(&stft_solver, audio2);
-            downsample_image_fixed(stft_buffer, 129, 61, input_data, 32, 32);
+            STFT_Process_RowMajor(&stft_solver, audio2);
+            resize_image(stft_buffer, 129, 61, input_data, 32, 32);
 
 
             status = STARTED_NEURAL_NETWORK_PREDICTION;
             HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
         }
-
 
 //        if (status == STARTED_TRANSMITTING_DATA) {
 //            HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
@@ -492,64 +423,14 @@ int main(void) {
             HD44780_Clear();
             HD44780_Home();
             HD44780_PrintStr("Prediction: ");
-            ai_i32 batch;
-            ai_error err;
-
-//            for (int i = 0; i < AI_WORD_CLASSIFIER_IN_1_SIZE; i++) {
-//                input_data[i] = (int8_t)((stft_buffer_resized[i] / 32768.f / input_scale) + intput_zero_point);
-//            }
-
-            // Run inference
-            batch = ai_word_classifier_run(network, ai_input, ai_output);
-            if (batch != 1) {
-                err = ai_word_classifier_get_error(network);
-            }
-
-//            for (int i = 0; i < AI_WORD_CLASSIFIER_OUT_1_SIZE; i++) {
-//                output_float[i] = ((float) output_data[i] - output_zero_point) * output_scale;
-//            }
 
 
+            ai_word_classifier_run(network, &ai_input[0], &ai_output[0]);
 
-            // Determine the predicted class for classification
-            int predicted_class = 0;
-            float max_value = output_data[0];
-            float probability = 0.0f;
-            for (int i = 0; i < AI_WORD_CLASSIFIER_OUT_1_SIZE; i++) {
-                probability = output_data[i];
-                if (probability > max_value) {
-                    max_value = probability;
-                    predicted_class = i;
-                }
-            }
 
-            switch (predicted_class) {
-                case 0: {
-                    HD44780_SetCursor(0, 1);
-                    HD44780_PrintStr("Go");
-                    break;
-                }
-                case 1: {
-                    HD44780_SetCursor(0, 1);
-                    HD44780_PrintStr("Left");
-                    break;
-                }
-                case 2: {
-                    HD44780_SetCursor(0, 1);
-                    HD44780_PrintStr("Right");
-                    break;
-                }
-                case 3: {
-                    HD44780_SetCursor(0, 1);
-                    HD44780_PrintStr("Stop");
-                    break;
-                }
-                default: {
-                    HD44780_SetCursor(0, 1);
-                    HD44780_PrintStr("Error");
-                    break;
-                }
-            }
+            int predicted_class = argmax(output_data, AI_WORD_CLASSIFIER_OUT_1_SIZE);
+            DisplayPredictedClass(predicted_class, AI_WORD_CLASSIFIER_OUT_1_SIZE, available_words);
+
             status = WAITING;
             if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
                 Error_Handler();
@@ -560,7 +441,6 @@ int main(void) {
 
         MX_X_CUBE_AI_Process();
         /* USER CODE BEGIN 3 */
-//        }
         /* USER CODE END 3 */
     }
 }
