@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     train_data = np.array([get_spectrogram(x) for x in train_data])
 
-    interpreter = tf.lite.Interpreter(model_path="test_new_shape_8kHz_0.288b.tflite")
+    interpreter = tf.lite.Interpreter(model_path="models/test_new_shape_8kHz_0.288b.tflite")
     interpreter.allocate_tensors()
 
     input_details = interpreter.get_input_details()

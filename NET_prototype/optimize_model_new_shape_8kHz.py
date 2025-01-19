@@ -8,12 +8,24 @@ import sys
 sys.path.append("../")
 from DSP_prototype.DSP_algorithms import stft
 import csv
+from tensorflow_model_optimization.python.core.quantization.keras import \
+        quantize_layer
+from tensorflow_model_optimization.python.core.quantization.keras import \
+    quantize_wrapper
+from tensorflow_model_optimization.python.core.quantization.keras import \
+    quantize_config
+from tensorflow_model_optimization.python.core.quantization.keras import quantizers
+import tensorflow_model_optimization as tfmot
 
 original_sr = 16000
-dictionary_classes = {1: 'go', 2: 'left', 3: 'no', 6: 'right', 7: 'stop', 9: 'yes', 10: 'silence', 11: 'unknown'}
 label_strings = ["down", "go", "left", "no", "off", "on", "right", "stop", "up", "yes", "silence", "unknown"]
-selected_labels = [1, 2, 3, 6, 7, 9, 10, 11]
+selected_labels = [1, 2, 6, 7, 10, 11]
 selected_labels_dict = {x:i for i, x in enumerate(selected_labels)}
+NUM_CLASSES = len(selected_labels)
+commands = [label_strings[x] for x in selected_labels]
+selected_labels_str = [label_strings[x] for x in selected_labels]
+prediction_dict = {i: label for i, label in enumerate(selected_labels_str)}
+prediction_dict_reversed = {label: i for i, label in enumerate(selected_labels_str)}
 
 
 def split_data_and_labels(dataset, length):
@@ -48,9 +60,42 @@ def get_spectrogram(pcm):
     return np.abs(D)
 
 
+class DefaultBNQuantizeConfig(tfmot.quantization.keras.QuantizeConfig):
+
+    def get_weights_and_quantizers(self, layer):
+        return []
+
+    def get_activations_and_quantizers(self, layer):
+        return []
+
+    def set_quantize_weights(self, layer, quantize_weights):
+        pass
+
+    def set_quantize_activations(self, layer, quantize_activations):
+        pass
+
+    def get_output_quantizers(self, layer):
+        return [tfmot.quantization.keras.quantizers.MovingAverageQuantizer(
+            num_bits=8, per_axis=False, symmetric=False, narrow_range=False)]
+
+    def get_config(self):
+        return {}
+
+
 if __name__ == "__main__":
-    model = keras.models.load_model("tra_model_for_optimization5.h5")
-    model.summary()
+    # Convert the model.
+
+    # Register the custom objects used by quantization layers
+    custom_objects = {
+        'QuantizeLayer': quantize_layer.QuantizeLayer,
+        'QuantizeWrapperV2': quantize_wrapper.QuantizeWrapperV2,
+        'QuantizeBatchNormalization': quantize_wrapper.QuantizeWrapperV2,
+        'MovingAverageQuantizer': quantizers.MovingAverageQuantizer,
+    }
+
+    with tf.keras.utils.custom_object_scope(custom_objects):
+        model = keras.models.load_model("tra_qat_model.h5")
+        model.summary()
     #
     # # Load the Speech Commands dataset
     # dataset, info = tfds.load('speech_commands', with_info=True, as_supervised=True)
@@ -93,18 +138,19 @@ if __name__ == "__main__":
             yield [tf.expand_dims(input_value, 0)]
 
 
-    # Convert the model.
-    converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.representative_dataset = representative_dataset_gen
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    converter.inference_input_type = tf.float32
-    converter.inference_output_type = tf.float32
-    tflite_model = converter.convert()
+    # Wrap the conversion in a custom_object_scope
+    with tf.keras.utils.custom_object_scope(custom_objects):
+        converter = tf.lite.TFLiteConverter.from_keras_model(model)
+        converter.optimizations = [tf.lite.Optimize.DEFAULT]
+        converter.representative_dataset = representative_dataset_gen
+        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+        converter.inference_input_type = tf.float32  # Optional, can be set to tf.int8 if required
+        converter.inference_output_type = tf.float32  # Optional, can be set to tf.int8 if required
+        tflite_model = converter.convert()
 
 
-    with open('tra_model_for_optimization5.tflite', 'wb') as f:
+    with open('tra_qat_model.tflite', 'wb') as f:
         f.write(tflite_model)
 
-    model_Size = os.path.getsize("tra_model_for_optimization5.tflite")
+    model_Size = os.path.getsize("tra_qat_model.tflite")
     print(f"Model ma {model_Size / 1e3} kB")

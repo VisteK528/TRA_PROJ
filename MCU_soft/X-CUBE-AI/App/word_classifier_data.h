@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    word_classifier_data.h
   * @author  AST Embedded Analytics Research Platform
-  * @date    2025-01-18T00:43:13+0100
+  * @date    2025-01-19T01:55:29+0100
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * Copyright (c) 2025 STMicroelectronics.
@@ -32,7 +32,7 @@ AI_DEPRECATED
 AI_API_DECLARE_BEGIN
 
 
-extern const ai_u64 s_word_classifier_weights_array_u64[7454];
+extern const ai_u64 s_word_classifier_weights_array_u64[17316];
 
 
 

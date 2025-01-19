@@ -170,10 +170,19 @@ AI_ALIGNED(4) static ai_i8 activations[AI_WORD_CLASSIFIER_DATA_ACTIVATIONS_SIZE]
 AI_ALIGNED(4) static ai_float input_data[AI_WORD_CLASSIFIER_IN_1_SIZE];         // Input buffer
 AI_ALIGNED(4) static ai_float output_data[AI_WORD_CLASSIFIER_OUT_1_SIZE];
 
-float stft_buffer[AUDIO_LENGTH_2];
+float output_float[AI_WORD_CLASSIFIER_OUT_1_SIZE] = {};
 
-ai_buffer* ai_input = NULL;
-ai_buffer* ai_output = NULL;
+float input_scale = 0.169842422f;
+float intput_zero_point = -128.f;
+
+float output_scale = 0.00390625f;  // Uzyskane z modelu
+float output_zero_point = -128.f;    // Uzyskane z modelu
+
+float stft_buffer[AUDIO_LENGTH_2];
+float stft_buffer_resized[32*32];
+
+ai_buffer* ai_input;
+ai_buffer* ai_output;
 
 /* USER CODE END PV */
 
@@ -182,33 +191,62 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
 
-void downsample_image(const float *input_image, int input_height, int input_width,
-                      float *output_image, int target_height, int target_width) {
+// Helper function to get the max of two values
+float max(float a, float b) {
+    return a > b ? a : b;
+}
+
+// Helper function to get the min of two values
+float min(float a, float b) {
+    return a < b ? a : b;
+}
+
+// Function to downsample an image
+void downsample_image_fixed(
+        const float *input_image, int input_height, int input_width,
+        float *output_image, int target_height, int target_width) {
+
+    // Calculate scaling factors
     float scale_height = (float)input_height / target_height;
     float scale_width = (float)input_width / target_width;
 
+    // Iterate over each pixel in the target image
     for (int y = 0; y < target_height; y++) {
         for (int x = 0; x < target_width; x++) {
             // Map target pixel to source coordinates
-            float src_y = y * scale_height;
-            float src_x = x * scale_width;
+            float src_y = (y + 0.5f) * scale_height - 0.5f;
+            float src_x = (x + 0.5f) * scale_width - 0.5f;
 
-            int y0 = (int)src_y;
-            int x0 = (int)src_x;
-            int y1 = y0 + 1 < input_height ? y0 + 1 : y0;
-            int x1 = x0 + 1 < input_width ? x0 + 1 : x0;
+            // Calculate integer bounding box of the source coordinates
+            int y0 = (int)floor(src_y);
+            int x0 = (int)floor(src_x);
+            int y1 = min(y0 + 1, input_height - 1);
+            int x1 = min(x0 + 1, input_width - 1);
+
+            // Handle edge cases for the coordinates
+            y0 = max(0, y0);
+            x0 = max(0, x0);
 
             // Compute interpolation weights
             float dy = src_y - y0;
             float dx = src_x - x0;
 
             // Bilinear interpolation
-            float value =
-                    input_image[y0 * input_width + x0] * (1 - dx) * (1 - dy) +
-                    input_image[y0 * input_width + x1] * dx * (1 - dy) +
-                    input_image[y1 * input_width + x0] * (1 - dx) * dy +
-                    input_image[y1 * input_width + x1] * dx * dy;
+            float v00 = input_image[y0 * input_width + x0];
+            float v01 = input_image[y0 * input_width + x1];
+            float v10 = input_image[y1 * input_width + x0];
+            float v11 = input_image[y1 * input_width + x1];
 
+            float value =
+                    v00 * (1 - dx) * (1 - dy) +
+                    v01 * dx * (1 - dy) +
+                    v10 * (1 - dx) * dy +
+                    v11 * dx * dy;
+
+            // Ensure no negative values
+            value = max(0.0f, value);
+
+            // Assign to the output image
             output_image[y * target_width + x] = value;
         }
     }
@@ -277,58 +315,59 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
+int main(void) {
 
-  /* USER CODE BEGIN 1 */
+    /* USER CODE BEGIN 1 */
 
-  SystemInit();
+    SystemInit();
 
-  /* USER CODE END 1 */
+    /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+    /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
 
-  /* USER CODE BEGIN Init */
+    /* USER CODE BEGIN Init */
 
-  /* USER CODE END Init */
+    /* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+    /* Configure the system clock */
+    SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+    /* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+    /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_ADC1_Init();
-  MX_TIM3_Init();
-  MX_USB_OTG_FS_PCD_Init();
-  MX_USART3_UART_Init();
-  MX_I2C1_Init();
-  MX_X_CUBE_AI_Init();
-  /* USER CODE BEGIN 2 */
+    /* Initialize all configured peripherals */
+    MX_GPIO_Init();
+    MX_ADC1_Init();
+    MX_TIM3_Init();
+    MX_USB_OTG_FS_PCD_Init();
+    MX_USART3_UART_Init();
+    MX_I2C1_Init();
+    MX_X_CUBE_AI_Init();
+    /* USER CODE BEGIN 2 */
 
-  FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response, INPUT_FIR_BUFFER_LENGTH);
-  DecimationFilterInit(&decimation_filter, &lp_input, decimation_factor);
-  STFT_Init(&stft_solver, FFT_SIZE, HOP_SIZE, AUDIO_LENGTH_2, hann_window, STFT_FILTER_MASK_SIZE, stft_filter_mask, stft_buffer);
+    FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response,
+                  INPUT_FIR_BUFFER_LENGTH);
+    DecimationFilterInit(&decimation_filter, &lp_input, decimation_factor);
+    STFT_Init(&stft_solver, FFT_SIZE, HOP_SIZE, AUDIO_LENGTH_2, hann_window, STFT_FILTER_MASK_SIZE, stft_filter_mask,
+              stft_buffer);
 
-  if(HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
-    Error_Handler();
-  }
+    if (HAL_ADC_Start_IT(&hadc1) != HAL_OK) {
+        Error_Handler();
+    }
 
-  // Start TIMER3
-  if(HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
-    Error_Handler();
-  }
+    // Start TIMER3
+    if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
+        Error_Handler();
+    }
 
-  // start pwm generation
-  if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-    Error_Handler();
-  }
+    // start pwm generation
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+        Error_Handler();
+    }
 
 
     // Create the AI network
@@ -340,7 +379,7 @@ int main(void)
             AI_WORD_CLASSIFIER_DATA_ACTIVATIONS(activations)
     };
 
-    if(!ai_word_classifier_init(network, &params)){
+    if (!ai_word_classifier_init(network, &params)) {
         Error_Handler();
     }
 
@@ -351,223 +390,179 @@ int main(void)
     ai_output->data = output_data;
 
 
-  /* Initialize */
-  HD44780_Init(2);
+    /* Initialize */
+    HD44780_Init(2);
 
-  HD44780_Clear();
-  HD44780_Home();
-  HD44780_PrintStr("Waiting...");
+    HD44780_Clear();
+    HD44780_Home();
+    HD44780_PrintStr("Waiting...");
 
-  /* USER CODE END 2 */
+    /* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    HAL_Delay(100);
-    HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-    uint8_t length;
+    /* Infinite loop */
+    /* USER CODE BEGIN WHILE */
+    while (1) {
+        HAL_Delay(100);
+        HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+        uint8_t length;
 
-    if(status == STARTED_STFT) {
-    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-    	HD44780_Clear();
-		HD44780_Home();
-		HD44780_PrintStr("Started STFT...");
-    	STFT_Process(&stft_solver, audio2);
-        downsample_image(stft_buffer, 129, 61, input_data, 32, 32);
-
-
-    	status = STARTED_TRANSMITTING_DATA;
-    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-    }
-
-  if(status == STARTED_TRANSMITTING_DATA) {
-		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
-
-		HD44780_Clear();
-		HD44780_Home();
-		HD44780_PrintStr("Transmitting");
-		HD44780_SetCursor(0, 1);
-		HD44780_PrintStr("data...");
+        if (status == STARTED_STFT) {
+            HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+            HD44780_Clear();
+            HD44780_Home();
+            HD44780_PrintStr("Started STFT...");
+            STFT_Process(&stft_solver, audio2);
+            downsample_image_fixed(stft_buffer, 129, 61, input_data, 32, 32);
 
 
-//		for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
-//			length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, audio2[i]);
-//			if (length > 0 && length < sizeof(message)) {
-//			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-//			  HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
-//			  HAL_Delay(1);
-//			}
-//		}
-
-
-		status = STARTED_NEURAL_NETWORK_PREDICTION;
-
-    }
-
-    if(status == STARTED_NEURAL_NETWORK_PREDICTION) {
-        HD44780_Clear();
-        HD44780_Home();
-        HD44780_PrintStr("Prediction: ");
-        ai_i32 batch;
-        ai_error err;
-
-        // Define input and output buffers
-//        ai_buffer* ai_input = ai_word_classifier_inputs_get(network, NULL);
-//        ai_input->data = input_data;
-//
-//        ai_buffer* ai_output = ai_word_classifier_outputs_get(network, NULL);
-//        ai_output->data = output_data;
-
-
-        // Run inference
-        batch = ai_word_classifier_run(network, ai_input, ai_output);
-        if (batch != 1) {
-            err = ai_word_classifier_get_error(network);
+            status = STARTED_NEURAL_NETWORK_PREDICTION;
+            HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
         }
 
 
+//        if (status == STARTED_TRANSMITTING_DATA) {
+//            HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+//
+//            HD44780_Clear();
+//            HD44780_Home();
+//            HD44780_PrintStr("Transmitting");
+//            HD44780_SetCursor(0, 1);
+//            HD44780_PrintStr("data...");
+//
+//            length = snprintf(message, sizeof(message), "AUDIO_START\r\n");
+//            HAL_UART_Transmit_IT(&huart3, (uint8_t *) message, length);
+//            HAL_Delay(1);
+//
+//            for (uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
+//                length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, audio2[i]);
+//                if (length > 0 && length < sizeof(message)) {
+//                    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//                    HAL_UART_Transmit_IT(&huart3, (uint8_t *) message, length);
+//                    HAL_Delay(1);
+//                }
+//            }
+//            length = snprintf(message, sizeof(message), "AUDIO_STOP\r\n");
+//            HAL_UART_Transmit_IT(&huart3, (uint8_t *) message, length);
+//            HAL_Delay(1);
+//
+//            status = STARTED_TRANSMITTING_STFT;
+//
+//        }
+//
+//        if (status == STARTED_TRANSMITTING_STFT) {
+//            HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+//            HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+//
+//            HD44780_Clear();
+//            HD44780_Home();
+//            HD44780_PrintStr("Transmitting");
+//            HD44780_SetCursor(0, 1);
+//            HD44780_PrintStr("STFT...");
+//
+//            length = snprintf(message, sizeof(message), "STFT_START\r\n");
+//            HAL_UART_Transmit_IT(&huart3, (uint8_t *) message, length);
+//            HAL_Delay(1);
+//
+//            for (uint32_t i = 0; i < stft_solver.out_length; ++i) {
+//                length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, stft_solver.out[i]);
+//                if (length > 0 && length < sizeof(message)) {
+//                    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//                    HAL_UART_Transmit_IT(&huart3, (uint8_t *) message, length);
+//                    HAL_Delay(1);
+//                }
+//            }
+//
+//            length = snprintf(message, sizeof(message), "STFT_STOP\r\n");
+//            HAL_UART_Transmit_IT(&huart3, (uint8_t *) message, length);
+//            HAL_Delay(1);
+//
+//            HD44780_Clear();
+//            HD44780_Home();
+//            HD44780_PrintStr("Waiting...");
+//            HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+//
+//            status = STARTED_NEURAL_NETWORK_PREDICTION;
+////            if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+////                Error_Handler();
+////            }
+//
+//        }
 
-        // Determine the predicted class for classification
-        int predicted_class = 0;
-        float max_value = output_data[0];
-        output_data[4] *= 0.6f;
-        volatile float probability = 0.0f;
-        for (int i = 0; i < AI_WORD_CLASSIFIER_OUT_1_SIZE; i++) {
-            probability = output_data[i];
-            if (probability > max_value) {
-                max_value = probability;
-                predicted_class = i;
+        if (status == STARTED_NEURAL_NETWORK_PREDICTION) {
+            HD44780_Clear();
+            HD44780_Home();
+            HD44780_PrintStr("Prediction: ");
+            ai_i32 batch;
+            ai_error err;
+
+//            for (int i = 0; i < AI_WORD_CLASSIFIER_IN_1_SIZE; i++) {
+//                input_data[i] = (int8_t)((stft_buffer_resized[i] / 32768.f / input_scale) + intput_zero_point);
+//            }
+
+            // Run inference
+            batch = ai_word_classifier_run(network, ai_input, ai_output);
+            if (batch != 1) {
+                err = ai_word_classifier_get_error(network);
+            }
+
+//            for (int i = 0; i < AI_WORD_CLASSIFIER_OUT_1_SIZE; i++) {
+//                output_float[i] = ((float) output_data[i] - output_zero_point) * output_scale;
+//            }
+
+
+
+            // Determine the predicted class for classification
+            int predicted_class = 0;
+            float max_value = output_data[0];
+            float probability = 0.0f;
+            for (int i = 0; i < AI_WORD_CLASSIFIER_OUT_1_SIZE; i++) {
+                probability = output_data[i];
+                if (probability > max_value) {
+                    max_value = probability;
+                    predicted_class = i;
+                }
+            }
+
+            switch (predicted_class) {
+                case 0: {
+                    HD44780_SetCursor(0, 1);
+                    HD44780_PrintStr("Go");
+                    break;
+                }
+                case 1: {
+                    HD44780_SetCursor(0, 1);
+                    HD44780_PrintStr("Left");
+                    break;
+                }
+                case 2: {
+                    HD44780_SetCursor(0, 1);
+                    HD44780_PrintStr("Right");
+                    break;
+                }
+                case 3: {
+                    HD44780_SetCursor(0, 1);
+                    HD44780_PrintStr("Stop");
+                    break;
+                }
+                default: {
+                    HD44780_SetCursor(0, 1);
+                    HD44780_PrintStr("Error");
+                    break;
+                }
+            }
+            status = WAITING;
+            if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
+                Error_Handler();
             }
         }
 
-        switch (predicted_class) {
-            case 0: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("Go");
-                break;
-            }
-            case 1: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("Left");
-                break;
-            }
-            case 2: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("No");
-                break;
-            }
-            case 3: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("Right");
-                break;
-            }
-            case 4: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("Stop");
-                break;
-            }
-            case 5: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("Yes");
-                break;
-            }
-            case 6: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("Silence");
-                break;
-            }
-            case 7: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("Unknown");
-                break;
-            }
-            default: {
-                HD44780_SetCursor(0, 1);
-                HD44780_PrintStr("Error");
-                break;
-            }
-        }
-        status = WAITING;
-        if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-			Error_Handler();
-		}
+        /* USER CODE END WHILE */
+
+        MX_X_CUBE_AI_Process();
+        /* USER CODE BEGIN 3 */
+//        }
+        /* USER CODE END 3 */
     }
-
-//    if(status == STARTED_TRANSMITTING_DATA) {
-//		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
-//
-//		HD44780_Clear();
-//		HD44780_Home();
-//		HD44780_PrintStr("Transmitting");
-//		HD44780_SetCursor(0, 1);
-//		HD44780_PrintStr("data...");
-//
-//		length = snprintf(message, sizeof(message), "AUDIO_START\r\n");
-//		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
-//		HAL_Delay(1);
-//
-//		for(uint32_t i = 0; i < AUDIO_LENGTH_2; ++i) {
-//			length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, audio2[i]);
-//			if (length > 0 && length < sizeof(message)) {
-//			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-//			  HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
-//			  HAL_Delay(1);
-//			}
-//		}
-//		length = snprintf(message, sizeof(message), "AUDIO_STOP\r\n");
-//		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
-//		HAL_Delay(1);
-//
-//		status = STARTED_TRANSMITTING_STFT;
-//
-//    }
-//
-//    if(status == STARTED_TRANSMITTING_STFT) {
-//		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
-//		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-//
-//		HD44780_Clear();
-//		HD44780_Home();
-//		HD44780_PrintStr("Transmitting");
-//		HD44780_SetCursor(0, 1);
-//		HD44780_PrintStr("STFT...");
-//
-//		length = snprintf(message, sizeof(message), "STFT_START\r\n");
-//		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
-//		HAL_Delay(1);
-//
-//		for(uint32_t i = 0; i < stft_solver.out_length; ++i) {
-//			length = snprintf(message, sizeof(message), "%05lu,%05.5f\r\n", i, stft_solver.out[i]);
-//			if (length > 0 && length < sizeof(message)) {
-//			  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-//			  HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
-//			  HAL_Delay(1);
-//			}
-//		}
-//
-//		length = snprintf(message, sizeof(message), "STFT_STOP\r\n");
-//		HAL_UART_Transmit_IT(&huart3, (uint8_t *)message, length);
-//		HAL_Delay(1);
-//
-//		HD44780_Clear();
-//		HD44780_Home();
-//		HD44780_PrintStr("Waiting...");
-//		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-//
-//		status = WAITING;
-//		if(HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-//			Error_Handler();
-//		}
-
-
-
-    /* USER CODE END WHILE */
-
-  MX_X_CUBE_AI_Process();
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
 }
 
 /**

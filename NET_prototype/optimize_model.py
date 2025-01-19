@@ -71,8 +71,8 @@ if __name__ == "__main__":
     converter.inference_output_type = tf.int8
     tflite_model = converter.convert()
 
-    with open('/home/vistek528/TRA_PROJ/NET_prototype/model_quantized2.tflite', 'wb') as f:
+    with open('/models/model_quantized2.tflite', 'wb') as f:
         f.write(tflite_model)
 
-    model_Size = os.path.getsize("/home/vistek528/TRA_PROJ/NET_prototype/model_quantized2.tflite")
+    model_Size = os.path.getsize("/models/model_quantized2.tflite")
     print(f"Model ma {model_Size / 1e6} bajtów")

@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    word_classifier_data_params.h
   * @author  AST Embedded Analytics Research Platform
-  * @date    2025-01-18T00:43:13+0100
+  * @date    2025-01-19T01:55:29+0100
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * Copyright (c) 2025 STMicroelectronics.
@@ -36,10 +36,10 @@
 
 
 #define AI_WORD_CLASSIFIER_DATA_WEIGHTS_SIZES \
-  { 59632, }
-#define AI_WORD_CLASSIFIER_DATA_WEIGHTS_SIZE         (59632)
+  { 138528, }
+#define AI_WORD_CLASSIFIER_DATA_WEIGHTS_SIZE         (138528)
 #define AI_WORD_CLASSIFIER_DATA_WEIGHTS_COUNT        (1)
-#define AI_WORD_CLASSIFIER_DATA_WEIGHT_1_SIZE        (59632)
+#define AI_WORD_CLASSIFIER_DATA_WEIGHT_1_SIZE        (138528)
 
 
 

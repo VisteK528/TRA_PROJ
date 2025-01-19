@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    word_classifier.h
   * @author  AST Embedded Analytics Research Platform
-  * @date    2025-01-18T00:43:13+0100
+  * @date    2025-01-19T01:55:29+0100
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention
@@ -23,7 +23,7 @@
 
 /******************************************************************************/
 #define AI_WORD_CLASSIFIER_MODEL_NAME          "word_classifier"
-#define AI_WORD_CLASSIFIER_ORIGIN_MODEL_NAME   "tra_model_for_optimization5"
+#define AI_WORD_CLASSIFIER_ORIGIN_MODEL_NAME   "tra_qat_model"
 
 /******************************************************************************/
 #define AI_WORD_CLASSIFIER_ACTIVATIONS_ALIGNMENT   (4)
@@ -64,12 +64,12 @@ AI_DEPRECATED
   AI_WORD_CLASSIFIER_OUT_1_SIZE_BYTES, \
 }
 #define AI_WORD_CLASSIFIER_OUT_1_FORMAT      (AI_BUFFER_FORMAT_FLOAT)
-#define AI_WORD_CLASSIFIER_OUT_1_CHANNEL     (8)
-#define AI_WORD_CLASSIFIER_OUT_1_SIZE        (8)
-#define AI_WORD_CLASSIFIER_OUT_1_SIZE_BYTES  (32)
+#define AI_WORD_CLASSIFIER_OUT_1_CHANNEL     (4)
+#define AI_WORD_CLASSIFIER_OUT_1_SIZE        (4)
+#define AI_WORD_CLASSIFIER_OUT_1_SIZE_BYTES  (16)
 
 /******************************************************************************/
-#define AI_WORD_CLASSIFIER_N_NODES (11)
+#define AI_WORD_CLASSIFIER_N_NODES (10)
 
 
 AI_API_DECLARE_BEGIN
