@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include "liquid_crystal_i2c.h"
 
 
@@ -12,7 +13,7 @@ float min(float a, float b);
 int argmax(const float* array, size_t length);
 void DisplayPredictedClass(int prediction, int num_classes, const char* available_classes_str);
 
-void noise_reduction_stft(float* signal, int n_fft);
+void noise_reduction_stft(float* signal, int n_fft, int num_frames, bool complex_output);
 
 /* Resize image using bilinear interpolation
  * */

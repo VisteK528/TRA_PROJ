@@ -51,7 +51,7 @@ endif ()
 
 include_directories(Core/Inc Drivers/STM32F4xx_HAL_Driver/Inc Drivers/STM32F4xx_HAL_Driver/Inc/Legacy Drivers/CMSIS/Device/ST/STM32F4xx/Include Middlewares/ST/ARM/DSP/Inc X-CUBE-AI/App X-CUBE-AI Drivers/CMSIS/Device/ST/STM32F4xx/Include  Middlewares/ST/AI/Inc Drivers/CMSIS/Include)
 
-add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32F429xx)
+add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32F429xx -D_USE_CMSIS)
 
 file(GLOB_RECURSE SOURCES "X-CUBE-AI/*.*" "Core/*.*" "Middlewares/*.*" "Drivers/*.*")
 
