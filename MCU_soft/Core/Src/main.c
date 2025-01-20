@@ -360,7 +360,7 @@ int main(void)
             resize_image(stft_complex_buffer, 129, 61, input_data, 32, 32);
 
 
-            status = STARTED_TRANSMITTING_DATA;
+            status = STARTED_NEURAL_NETWORK_PREDICTION;
             HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
         }
 
@@ -426,9 +426,6 @@ int main(void)
             HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
             status = STARTED_NEURAL_NETWORK_PREDICTION;
-//            if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK) {
-//                Error_Handler();
-//            }
 
         }
 

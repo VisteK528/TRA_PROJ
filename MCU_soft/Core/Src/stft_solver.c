@@ -149,11 +149,12 @@ void ISTFT_Init(ISTFT_with_filter_solver *istft_solver, uint16_t fft_size, uint1
 
 uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_data) {
     uint16_t fft_size = istft_solver->fft_size;
-    uint16_t half_fft_size = fft_size / 2 + 1; // Number of frequency bins in the STFT
+    uint16_t half_fft_size = fft_size / 2; // Number of frequency bins in the STFT
     uint16_t frame_length = fft_size;
     float32_t ifft_output[512];       // Complex output (interleaved real + imag)
-    float32_t ifft_real_output[fft_size];      // Real-valued signal after IFFT
+    float32_t ifft_real_output[fft_size];
     float hannWindowArray[fft_size];
+    float hannWindowCoefficients[8000];
 
     // Initialize Hann window
     for (uint16_t i = 0; i < fft_size; ++i) {
@@ -162,6 +163,7 @@ uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_
 
     // Clear reconstruction buffer
     memset(istft_solver->reconstruction, 0, istft_solver->signal_length * sizeof(float));
+    memset(hannWindowCoefficients, 0, 8000 * sizeof(float));
 
     arm_cfft_instance_f32 cfft_instance;
     if (arm_cfft_init_f32(&cfft_instance, fft_size) != ARM_MATH_SUCCESS) {
@@ -200,146 +202,19 @@ uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_
         uint16_t start = frame_idx * istft_solver->hop_size;
         for (uint16_t k = 0; k < fft_size; ++k) {
             istft_solver->reconstruction[start + k] += ifft_real_output[k];
+            hannWindowCoefficients[start + k] += hannWindowArray[k];
         }
     }
 
-//    // Normalize by Hann window coefficients
-//    for (uint16_t j = 0; j < istft_solver->signal_length; ++j) {
-//        if (hannWindowArray[j % fft_size] != 0) {
-//            istft_solver->reconstruction[j] /= hannWindowArray[j % fft_size];
-//        }
-//    }
+    // Normalize by Hann window coefficients
+    for (uint16_t j = 0; j < istft_solver->signal_length; ++j) {
+        if (hannWindowCoefficients[j] != 0) {
+            istft_solver->reconstruction[j] /= hannWindowCoefficients[j];
+        }
+    }
 
     return 0;
 }
-
-
-//uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_data) {
-//    uint16_t fft_size = istft_solver->fft_size;
-//    uint16_t n_bins = fft_size / 2 + 1;
-//    uint16_t frame_length = fft_size;
-//    float32_t ifft_output[fft_size * 2];  // Complex output (interleaved real + imag)
-//    float32_t ifft_real_output[fft_size]; // Real-valued signal after IFFT
-//    float hannWindowCoefficients[8000];
-//    float hannWindowArray[fft_size];
-//
-//    for(int i = 0; i < fft_size; ++i){
-//        hannWindowArray[i] = hannWindow(i, fft_size);
-//    }
-//
-//
-//
-//    memset(istft_solver->reconstruction, 0, istft_solver->signal_length * sizeof(float));
-//    memset(hannWindowCoefficients, 0, istft_solver->signal_length * sizeof(float));
-//
-//    arm_cfft_instance_f32 cfft_instance;
-//    if (arm_cfft_init_f32(&cfft_instance, fft_size, 1, 1) != ARM_MATH_SUCCESS) {
-//        return 1;
-//    }
-//
-//    for (uint16_t frame_idx = 0; frame_idx < istft_solver->num_frames; frame_idx++) {
-//
-//        // Prepare the IFFT input (complex values, interleaved real and imaginary)
-//        for (uint16_t freq_idx = 0; freq_idx < fft_size; freq_idx++) {
-//            uint16_t input_idx = frame_idx * n_bins * 2 + freq_idx * 2;
-//            ifft_output[2 * freq_idx] = stft_data[input_idx];
-//            ifft_output[2 * freq_idx + 1] = stft_data[input_idx + 1];
-//        }
-//
-//        // Perform inverse FFT (complex-to-complex IFFT)
-//        arm_cfft_f32(&cfft_instance, ifft_output, 1, 1);
-//
-//        // Extract real part from IFFT output
-//        for (uint16_t sample_idx = 0; sample_idx < frame_length; sample_idx++) {
-//            ifft_real_output[sample_idx] = ifft_output[2 * sample_idx] * hannWindow(sample_idx, fft_size);
-//        }
-//
-//        uint16_t start = frame_idx * istft_solver->hop_size;
-//        for(uint16_t k = 0; k < fft_size; ++k){
-//            istft_solver->reconstruction[start + k] = istft_solver->reconstruction[start + k] + ifft_real_output[k];
-//            hannWindowCoefficients[start + k] = hannWindowCoefficients[start + k] + hannWindowArray[k];
-//        }
-//    }
-//
-//    for (uint16_t j = 0; j < istft_solver->signal_length; ++j) {
-//        if(hannWindowCoefficients[j] != 0){
-//            istft_solver->reconstruction[j] /= hannWindowCoefficients[j];
-//        }
-//    }
-//
-//    return 0;
-//}
-
-//uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_data, bool is_complex) {
-//    uint16_t fft_size = istft_solver->fft_size;
-//    uint16_t half_fft_size = fft_size / 2 + 1;
-//    uint16_t frame_length = fft_size;
-//    float32_t ifft_output[fft_size * 2];  // Complex output (interleaved real + imag)
-//    float32_t ifft_real_output[fft_size]; // Real-valued signal after IFFT
-//
-//    memset(istft_solver->reconstruction, 0, istft_solver->signal_length * sizeof(float));
-//
-//    arm_cfft_radix2_instance_f32 cfft_instance;
-//    if (arm_cfft_radix2_init_f32(&cfft_instance, fft_size, 1, 1) != ARM_MATH_SUCCESS) {
-//        return 1;
-//    }
-//
-//    for (uint16_t frame_idx = 0; frame_idx < istft_solver->num_frames; frame_idx++) {
-//        // Prepare the IFFT input (complex values, interleaved real and imaginary)
-//        for (uint16_t freq_idx = 0; freq_idx < half_fft_size; freq_idx++) {
-//            uint16_t input_idx = frame_idx * half_fft_size * 2 + freq_idx * 2;
-//            ifft_output[2 * freq_idx] = stft_data[input_idx];       // Real part
-//            ifft_output[2 * freq_idx + 1] = is_complex ? stft_data[input_idx + 1] : 0.0f; // Imaginary part
-//        }
-//
-//        // Enforce conjugate symmetry for IFFT
-//        for (uint16_t freq_idx = half_fft_size; freq_idx < fft_size; freq_idx++) {
-//            uint16_t mirrored_idx = fft_size - freq_idx;
-//            ifft_output[2 * freq_idx] = ifft_output[2 * mirrored_idx];       // Real part
-//            ifft_output[2 * freq_idx + 1] = -ifft_output[2 * mirrored_idx + 1]; // Imaginary part
-//        }
-//
-//        // Perform inverse FFT (complex-to-complex IFFT)
-//        arm_cfft_radix2_f32(&cfft_instance, ifft_output);
-//
-//        // Extract real part from IFFT output and apply Hann window
-//        for (uint16_t sample_idx = 0; sample_idx < frame_length; sample_idx++) {
-//            ifft_real_output[sample_idx] = ifft_output[2 * sample_idx] * hannWindow(sample_idx, fft_size);
-//        }
-//
-//        // Overlap-add the windowed IFFT output directly into the reconstruction buffer
-//        uint16_t start = frame_idx * istft_solver->hop_size;
-//        for (uint16_t k = 0; k < fft_size; ++k) {
-//            istft_solver->reconstruction[start + k] += ifft_real_output[k];
-//        }
-//    }
-//
-//    // Normalize the reconstruction dynamically
-//    for (uint16_t idx = 0; idx < istft_solver->signal_length; idx++) {
-//        float hann_sum = 0.0f;
-//
-//        // Compute dynamic Hann window sum for overlapping frames
-//        for (uint16_t frame_idx = 0; frame_idx < istft_solver->num_frames; frame_idx++) {
-//            int16_t pos_in_frame = idx - frame_idx * istft_solver->hop_size;
-//            if (pos_in_frame >= 0 && pos_in_frame < fft_size) {
-//                hann_sum += hannWindow(pos_in_frame, fft_size);
-//            }
-//        }
-//
-//        // Normalize if Hann sum is greater than 0
-//        if (hann_sum > 0.0f) {
-//            istft_solver->reconstruction[idx] /= hann_sum;
-//        }
-//    }
-//
-//    return 0;
-//}
-
-
-
-
-
-
 
 
 void ISTFT_Free(ISTFT_with_filter_solver *istft_solver) {
