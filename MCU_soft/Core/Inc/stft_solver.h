@@ -42,7 +42,7 @@ uint8_t STFT_Process_RowMajor_Complex(STFT_with_filter_solver *stft_solver, cons
 
 void ISTFT_Init(ISTFT_with_filter_solver *istft_solver, uint16_t fft_size, uint16_t hop_size, uint16_t signal_length,
                 const float *window, float *reconstruction_buffer);
-uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_data, bool is_complex);
+uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_data);
 
 void ISTFT_Free(ISTFT_with_filter_solver *istft_solver);
 

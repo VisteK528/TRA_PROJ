@@ -260,39 +260,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin) {
   * @brief  The application entry point.
   * @retval int
   */
-int main(void) {
+int main(void)
+{
 
-    /* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
 
     SystemInit();
 
-    /* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-    /* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-    /* USER CODE BEGIN Init */
+  /* USER CODE BEGIN Init */
 
-    /* USER CODE END Init */
+  /* USER CODE END Init */
 
-    /* Configure the system clock */
-    SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-    /* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-    /* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-    /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_ADC1_Init();
-    MX_TIM3_Init();
-    MX_USB_OTG_FS_PCD_Init();
-    MX_USART3_UART_Init();
-    MX_I2C1_Init();
-    MX_X_CUBE_AI_Init();
-    /* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_USB_OTG_FS_PCD_Init();
+  MX_USART3_UART_Init();
+  MX_I2C1_Init();
+  MX_X_CUBE_AI_Init();
+  /* USER CODE BEGIN 2 */
 
     FIRFilterInit(&lp_input, lp_input_buffer, INPUT_FIR_BUFFER_LENGTH, lp_input_impulse_response,
                   INPUT_FIR_BUFFER_LENGTH);
@@ -336,10 +337,10 @@ int main(void) {
     HD44780_Home();
     HD44780_PrintStr("Waiting...");
 
-    /* USER CODE END 2 */
+  /* USER CODE END 2 */
 
-    /* Infinite loop */
-    /* USER CODE BEGIN WHILE */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
     while (1) {
         HAL_Delay(100);
         HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
@@ -351,15 +352,15 @@ int main(void) {
             HD44780_Home();
             HD44780_PrintStr("Started STFT...");
 
-            //STFT_Process_RowMajor_Complex(&stft_solver, audio);
-            //noise_reduction_stft(stft_complex_buffer, FFT_SIZE, 61, true);
-            //ISTFT_Process(&istft_solver, stft_complex_buffer, true);
+            STFT_Process_RowMajor_Complex(&stft_solver, audio);
+            noise_reduction_stft(stft_complex_buffer, FFT_SIZE, 61, true);
+            ISTFT_Process(&istft_solver, stft_complex_buffer);
 
             STFT_Process_RowMajor(&stft_solver, audio);
             resize_image(stft_complex_buffer, 129, 61, input_data, 32, 32);
 
 
-            status = STARTED_NEURAL_NETWORK_PREDICTION;
+            status = STARTED_TRANSMITTING_DATA;
             HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
         }
 
@@ -449,12 +450,13 @@ int main(void) {
             }
         }
 
+
         /* USER CODE END WHILE */
 
         MX_X_CUBE_AI_Process();
         /* USER CODE BEGIN 3 */
-        /* USER CODE END 3 */
     }
+  /* USER CODE END 3 */
 }
 
 /**

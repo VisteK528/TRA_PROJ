@@ -41,7 +41,7 @@ void noise_reduction_stft(float* signal, int n_fft, int num_frames, bool complex
     int n_bins = n_fft / 2 + 1;  // Number of frequency bins per frame
 
     // Estimate noise power spectrum for each frequency bin
-    float noise_power[n_bins];
+    float noise_power[129];
     for (int bin = 0; bin < n_bins; ++bin) {
         noise_power[bin] = 0.0f;
         for (int frame = 0; frame < noise_frames; ++frame) {
@@ -85,6 +85,7 @@ void noise_reduction_stft(float* signal, int n_fft, int num_frames, bool complex
             }
         }
     }
+    float me;
 }
 
 void resize_image(const float *input_image, int input_height, int input_width, float *output_image, int target_height, int target_width){

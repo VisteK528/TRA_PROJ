@@ -1,6 +1,6 @@
 ST Edge AI Core v1.0.0-19895
-Created date          : 2025-01-19 01:55:30
-Parameters            : generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/tra_qat_model.tflite --compression none --verbosity 1 --allocate-inputs --allocate-outputs --workspace /tmp/mxAI_workspace336731410318011928319706759799743 --output /home/vistek528/.stm32cubemx/word_classifier_output
+Created date          : 2025-01-20 16:43:43
+Parameters            : generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/tra_qat_model.tflite --compression none --verbosity 1 --allocate-inputs --allocate-outputs --workspace /tmp/mxAI_workspace100770984849144033032456735041044 --output /home/vistek528/.stm32cubemx/word_classifier_output
 
 Exec/report summary (generate)
 ----------------------------------------------------------------------------------------------
@@ -11,7 +11,7 @@ compression        :   none
 options            :   allocate-inputs, allocate-outputs                                      
 optimization       :   balanced                                                               
 target/series      :   stm32f4                                                                
-workspace dir      :   /tmp/mxAI_workspace336731410318011928319706759799743                   
+workspace dir      :   /tmp/mxAI_workspace100770984849144033032456735041044                   
 output dir         :   /home/vistek528/.stm32cubemx/word_classifier_output                    
 model_fmt          :   ss/sa per channel                                                      
 model_name         :   tra_qat_model                                                          
