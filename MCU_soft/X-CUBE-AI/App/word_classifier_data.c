@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    word_classifier_data.c
   * @author  AST Embedded Analytics Research Platform
-  * @date    2025-01-20T16:43:42+0100
+  * @date    2025-01-21T21:05:00+0100
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention

@@ -28,42 +28,7 @@ void STFT_Free(STFT_with_filter_solver *stft_solver) {
     }
 }
 
-uint8_t STFT_Process_ColumnMajor(STFT_with_filter_solver *stft_solver, const float *signal) {
-    uint16_t num_frames = (stft_solver->signal_length - stft_solver->fft_size) / stft_solver->hop_size + 1;
-    uint16_t frame_length = stft_solver->fft_size / 2 + 1; // tylko częstotliwości do Nyquista
-    float32_t fft_output[stft_solver->fft_size]; // Wynik FFT w formacie przeplatanym Re, Im
-
-    arm_rfft_fast_instance_f32 fft_instance;
-    arm_rfft_fast_init_f32(&fft_instance, stft_solver->fft_size);
-
-    for (uint16_t frame_idx = 0; frame_idx < num_frames; frame_idx++) {
-        const float *frame = &signal[frame_idx * stft_solver->hop_size];
-
-        // Zastosowanie okna do ramki
-        for (uint16_t sample_idx = 0; sample_idx < stft_solver->fft_size; sample_idx++) {
-            fft_output[sample_idx] = frame[sample_idx] * stft_solver->window[sample_idx];
-        }
-
-        // Obliczanie FFT
-        arm_rfft_fast_f32(&fft_instance, fft_output, fft_output, 0);
-
-        // Obliczanie modułu spektrum dla częstotliwości do Nyquista
-        for (uint16_t sample_idx = 0; sample_idx < frame_length; sample_idx++) {
-            float32_t real = fft_output[2 * sample_idx];     // Część rzeczywista
-            float32_t imag = fft_output[2 * sample_idx + 1]; // Część urojona
-
-            if (sample_idx < stft_solver->stft_filter_mask_length) {
-        		stft_solver->out[frame_idx * frame_length + sample_idx] =
-                        sqrtf(real * real + imag * imag) * stft_solver->stft_filter_mask[sample_idx];
-			} else {
-				stft_solver->out[frame_idx * frame_length + sample_idx] = sqrtf(real * real + imag * imag);
-			}
-        }
-    }
-    return 0;
-}
-
-uint8_t STFT_Process_RowMajor(STFT_with_filter_solver *stft_solver, const float *signal) {
+uint8_t STFT_Process(STFT_with_filter_solver *stft_solver, const float *signal) {
     uint16_t num_frames = (stft_solver->signal_length - stft_solver->fft_size) / stft_solver->hop_size + 1;
     uint16_t frame_length = stft_solver->fft_size / 2 + 1;
     float32_t fft_output[stft_solver->fft_size];
@@ -95,12 +60,11 @@ uint8_t STFT_Process_RowMajor(STFT_with_filter_solver *stft_solver, const float 
 }
 
 
-uint8_t STFT_Process_RowMajor_Complex(STFT_with_filter_solver *stft_solver, const float *signal) {
+uint8_t STFT_ProcessComplex(STFT_with_filter_solver *stft_solver, const float *signal) {
     uint16_t num_frames = (stft_solver->signal_length - stft_solver->fft_size) / stft_solver->hop_size + 1;
-    uint16_t num_bins = stft_solver->fft_size / 2 + 1; // Number of frequency bins
-    uint16_t output_length = num_bins * 2;            // Interwoven real + imag
+    uint16_t num_bins = stft_solver->fft_size / 2 + 1;
 
-    float32_t fft_output[stft_solver->fft_size]; // Temporary buffer for FFT output
+    float32_t fft_output[stft_solver->fft_size];
 
     arm_rfft_fast_instance_f32 fft_instance;
     arm_rfft_fast_init_f32(&fft_instance, stft_solver->fft_size);
@@ -108,15 +72,13 @@ uint8_t STFT_Process_RowMajor_Complex(STFT_with_filter_solver *stft_solver, cons
     for (uint16_t frame_idx = 0; frame_idx < num_frames; frame_idx++) {
         const float *frame = &signal[frame_idx * stft_solver->hop_size];
 
-        // Apply window function and normalize
         for (uint16_t sample_idx = 0; sample_idx < stft_solver->fft_size; sample_idx++) {
             fft_output[sample_idx] = frame[sample_idx] * stft_solver->window[sample_idx];
         }
 
-        // Perform FFT
         arm_rfft_fast_f32(&fft_instance, fft_output, fft_output, 0);
 
-        // Store interwoven real and imaginary parts, scaled by FFT length
+        // Store interwoven real and imaginary parts
         for (uint16_t bin = 0; bin < num_bins; bin++) {
             float32_t real = fft_output[2 * bin];     // Real part
             float32_t imag = fft_output[2 * bin + 1]; // Imaginary part
@@ -149,9 +111,9 @@ void ISTFT_Init(ISTFT_with_filter_solver *istft_solver, uint16_t fft_size, uint1
 
 uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_data) {
     uint16_t fft_size = istft_solver->fft_size;
-    uint16_t half_fft_size = fft_size / 2; // Number of frequency bins in the STFT
+    uint16_t half_fft_size = fft_size / 2;
     uint16_t frame_length = fft_size;
-    float32_t ifft_output[512];       // Complex output (interleaved real + imag)
+    float32_t ifft_output[512];
     float32_t ifft_real_output[fft_size];
     float hannWindowArray[fft_size];
     float hannWindowCoefficients[8000];
@@ -161,7 +123,6 @@ uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_
         hannWindowArray[i] = hannWindow(i, fft_size);
     }
 
-    // Clear reconstruction buffer
     memset(istft_solver->reconstruction, 0, istft_solver->signal_length * sizeof(float));
     memset(hannWindowCoefficients, 0, 8000 * sizeof(float));
 
@@ -171,7 +132,6 @@ uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_
     }
 
     for (uint16_t frame_idx = 0; frame_idx < istft_solver->num_frames; frame_idx++) {
-        // Prepare the IFFT input (complex values, interleaved real and imaginary)
         memset(ifft_output, 0, fft_size*2*sizeof(float));
         memset(ifft_real_output, 0, fft_size*sizeof(float));
 
@@ -190,7 +150,6 @@ uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_
             ifft_output[2 * freq_idx + 1] = -ifft_output[2 * mirrored_idx + 1]; // Imaginary part
         }
 
-        // Perform inverse FFT (complex-to-complex IFFT)
         arm_cfft_f32(&cfft_instance, ifft_output, 1, 1);
 
         // Extract real part from IFFT output and apply the Hann window
@@ -198,7 +157,6 @@ uint8_t ISTFT_Process(ISTFT_with_filter_solver *istft_solver, const float *stft_
             ifft_real_output[sample_idx] = ifft_output[2 * sample_idx] * hannWindowArray[sample_idx];
         }
 
-        // Overlap-add reconstruction
         uint16_t start = frame_idx * istft_solver->hop_size;
         for (uint16_t k = 0; k < fft_size; ++k) {
             istft_solver->reconstruction[start + k] += ifft_real_output[k];

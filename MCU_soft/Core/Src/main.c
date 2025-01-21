@@ -173,11 +173,11 @@ ISTFT_with_filter_solver istft_solver;
 
 // Network setup
 
-const char available_words[4][6] = {
+const char available_words[4][7] = {
         "Go",
         "Left",
         "Right",
-        "Stop"
+        "Stop",
 };
 
 static ai_handle network = AI_HANDLE_NULL;
@@ -352,11 +352,11 @@ int main(void)
             HD44780_Home();
             HD44780_PrintStr("Started STFT...");
 
-            STFT_Process_RowMajor_Complex(&stft_solver, audio);
-            noise_reduction_stft(stft_complex_buffer, FFT_SIZE, 61, true);
-            ISTFT_Process(&istft_solver, stft_complex_buffer);
+            //STFT_ProcessComplex(&stft_solver, audio);
+            //noise_reduction_stft(stft_complex_buffer, FFT_SIZE, 61, true);
+            //ISTFT_Process(&istft_solver, stft_complex_buffer);
 
-            STFT_Process_RowMajor(&stft_solver, audio);
+            STFT_Process(&stft_solver, audio);
             resize_image(stft_complex_buffer, 129, 61, input_data, 32, 32);
 
 
@@ -448,10 +448,10 @@ int main(void)
         }
 
 
-        /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-        MX_X_CUBE_AI_Process();
-        /* USER CODE BEGIN 3 */
+  MX_X_CUBE_AI_Process();
+    /* USER CODE BEGIN 3 */
     }
   /* USER CODE END 3 */
 }

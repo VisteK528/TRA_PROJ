@@ -149,8 +149,8 @@ if __name__ == "__main__":
         tflite_model = converter.convert()
 
 
-    with open('tra_qat_model.tflite', 'wb') as f:
+    with open('to_be_deployed/tra_qat_model.tflite', 'wb') as f:
         f.write(tflite_model)
 
-    model_Size = os.path.getsize("tra_qat_model.tflite")
+    model_Size = os.path.getsize("to_be_deployed/tra_qat_model.tflite")
     print(f"Model ma {model_Size / 1e3} kB")

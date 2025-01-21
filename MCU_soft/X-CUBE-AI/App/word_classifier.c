@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    word_classifier.c
   * @author  AST Embedded Analytics Research Platform
-  * @date    2025-01-20T16:43:42+0100
+  * @date    2025-01-21T21:05:00+0100
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention
@@ -42,7 +42,7 @@
 #endif
 
 #undef AI_TOOLS_DATE_TIME
-#define AI_TOOLS_DATE_TIME   "2025-01-20T16:43:42+0100"
+#define AI_TOOLS_DATE_TIME   "2025-01-21T21:05:00+0100"
 
 #undef AI_TOOLS_COMPILE_TIME
 #define AI_TOOLS_COMPILE_TIME    __DATE__ " " __TIME__
@@ -804,7 +804,7 @@ AI_NETWORK_OBJ_DECLARE(
     22784, NULL, NULL),
   AI_TENSOR_LIST_IO_OBJ_INIT(AI_FLAG_NONE, AI_WORD_CLASSIFIER_IN_NUM, &serving_default_input_50_output),
   AI_TENSOR_LIST_IO_OBJ_INIT(AI_FLAG_NONE, AI_WORD_CLASSIFIER_OUT_NUM, &conversion_11_output),
-  &conversion_0_layer, 0x775241cf, NULL)
+  &conversion_0_layer, 0x7750a6cd, NULL)
 
 #else
 
@@ -824,7 +824,7 @@ AI_NETWORK_OBJ_DECLARE(
   ),
   AI_TENSOR_LIST_IO_OBJ_INIT(AI_FLAG_NONE, AI_WORD_CLASSIFIER_IN_NUM, &serving_default_input_50_output),
   AI_TENSOR_LIST_IO_OBJ_INIT(AI_FLAG_NONE, AI_WORD_CLASSIFIER_OUT_NUM, &conversion_11_output),
-  &conversion_0_layer, 0x775241cf, NULL)
+  &conversion_0_layer, 0x7750a6cd, NULL)
 
 #endif	/*(AI_TOOLS_API_VERSION < AI_TOOLS_API_VERSION_1_5)*/
 
@@ -987,7 +987,7 @@ ai_bool ai_word_classifier_get_info(
       .params            = AI_STRUCT_INIT,
       .activations       = AI_STRUCT_INIT,
       .n_nodes           = 0,
-      .signature         = 0x775241cf,
+      .signature         = 0x7750a6cd,
     };
 
     if (!ai_platform_api_get_network_report(network, &r)) return false;
@@ -1035,7 +1035,7 @@ ai_bool ai_word_classifier_get_report(
       .map_weights       = AI_STRUCT_INIT,
       .map_activations   = AI_STRUCT_INIT,
       .n_nodes           = 0,
-      .signature         = 0x775241cf,
+      .signature         = 0x7750a6cd,
     };
 
     if (!ai_platform_api_get_network_report(network, &r)) return false;

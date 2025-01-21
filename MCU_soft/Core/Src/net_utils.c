@@ -15,9 +15,8 @@ float min(const float a, const float b) {
 int argmax(const float* array, size_t length){
     int predicted_class = 0;
     float max_probability = array[0];
-    float probability;
     for (int i = 0; i < length; i++) {
-        probability = array[i];
+        float probability = array[i];
         if (probability > max_probability) {
             max_probability = probability;
             predicted_class = i;
@@ -30,13 +29,12 @@ void DisplayPredictedClass(int prediction, int num_classes, const char* availabl
     for(int i = 0; i < num_classes; ++i){
         if(i == prediction){
             HD44780_SetCursor(0, 1);
-            HD44780_PrintStr(&available_classes_str[i*6]);
+            HD44780_PrintStr(&available_classes_str[i*7]);
         }
     }
 }
 
 void noise_reduction_stft(float* signal, int n_fft, int num_frames, bool complex_output){
-    // Settings
     const int noise_frames = 10; // Number of frames used to estimate noise power
     int n_bins = n_fft / 2 + 1;  // Number of frequency bins per frame
 
@@ -56,7 +54,6 @@ void noise_reduction_stft(float* signal, int n_fft, int num_frames, bool complex
         noise_power[bin] /= (float)noise_frames;
     }
 
-    // Process each frame
     for (int frame = 0; frame < num_frames; ++frame) {
         for (int bin = 0; bin < n_bins; ++bin) {
             // Calculate SNR for this frequency bin
@@ -85,32 +82,25 @@ void noise_reduction_stft(float* signal, int n_fft, int num_frames, bool complex
             }
         }
     }
-    float me;
 }
 
 void resize_image(const float *input_image, int input_height, int input_width, float *output_image, int target_height, int target_width){
-    // Calculate scaling factors
     float scale_height = (float)input_height / target_height;
     float scale_width = (float)input_width / target_width;
 
-    // Iterate over each pixel in the target image
     for (int y = 0; y < target_height; y++) {
         for (int x = 0; x < target_width; x++) {
-            // Map target pixel to source coordinates
             float src_y = (y + 0.5f) * scale_height - 0.5f;
             float src_x = (x + 0.5f) * scale_width - 0.5f;
 
-            // Calculate integer bounding box of the source coordinates
             int y0 = (int)floor(src_y);
             int x0 = (int)floor(src_x);
             int y1 = min(y0 + 1, input_height - 1);
             int x1 = min(x0 + 1, input_width - 1);
 
-            // Handle edge cases for the coordinates
             y0 = max(0, y0);
             x0 = max(0, x0);
 
-            // Compute interpolation weights
             float dy = src_y - y0;
             float dx = src_x - x0;
 
@@ -126,11 +116,8 @@ void resize_image(const float *input_image, int input_height, int input_width, f
                     v10 * (1 - dx) * dy +
                     v11 * dx * dy;
 
-            // Ensure no negative values
             value = max(0.0f, value);
 
-            // Assign to the output image
-            //output_image[y * target_width + x] = value / 32768.f;
             output_image[y * target_width + x] = value;
         }
     }

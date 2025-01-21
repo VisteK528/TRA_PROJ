@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    word_classifier.h
   * @author  AST Embedded Analytics Research Platform
-  * @date    2025-01-20T16:43:42+0100
+  * @date    2025-01-21T21:05:00+0100
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention
@@ -23,7 +23,7 @@
 
 /******************************************************************************/
 #define AI_WORD_CLASSIFIER_MODEL_NAME          "word_classifier"
-#define AI_WORD_CLASSIFIER_ORIGIN_MODEL_NAME   "tra_qat_model"
+#define AI_WORD_CLASSIFIER_ORIGIN_MODEL_NAME   "tra_61percent_deployed"
 
 /******************************************************************************/
 #define AI_WORD_CLASSIFIER_ACTIVATIONS_ALIGNMENT   (4)

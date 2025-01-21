@@ -1,33 +1,33 @@
 ST Edge AI Core v1.0.0-19895
-Created date          : 2025-01-20 16:43:43
-Parameters            : generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/tra_qat_model.tflite --compression none --verbosity 1 --allocate-inputs --allocate-outputs --workspace /tmp/mxAI_workspace100770984849144033032456735041044 --output /home/vistek528/.stm32cubemx/word_classifier_output
+Created date          : 2025-01-21 21:05:01
+Parameters            : generate --target stm32f4 --name word_classifier -m /home/vistek528/TRA_PROJ/NET_prototype/to_be_deployed/tra_61percent_deployed.tflite --compression none --verbosity 1 --allocate-inputs --allocate-outputs --workspace /tmp/mxAI_workspace63018503194562365136047860454188 --output /home/vistek528/.stm32cubemx/word_classifier_output
 
 Exec/report summary (generate)
-----------------------------------------------------------------------------------------------
-model file         :   /home/vistek528/TRA_PROJ/NET_prototype/tra_qat_model.tflite            
-type               :   tflite                                                                 
-c_name             :   word_classifier                                                        
-compression        :   none                                                                   
-options            :   allocate-inputs, allocate-outputs                                      
-optimization       :   balanced                                                               
-target/series      :   stm32f4                                                                
-workspace dir      :   /tmp/mxAI_workspace100770984849144033032456735041044                   
-output dir         :   /home/vistek528/.stm32cubemx/word_classifier_output                    
-model_fmt          :   ss/sa per channel                                                      
-model_name         :   tra_qat_model                                                          
-model_hash         :   0x73e8354ecfe0ee74f0a2f4c71cfc8e7b                                     
-params #           :   137,652 items (135.28 KiB)                                             
-----------------------------------------------------------------------------------------------
-input 1/1          :   'serving_default_input_50', f32(1x32x32x1), 4.00 KBytes, activations   
-output 1/1         :   'conversion_11', f32(1x4), 16 Bytes, activations                       
-macc               :   7,045,032                                                              
-weights (ro)       :   138,528 B (135.28 KiB) (1 segment) / -412,080(-74.8%) vs float model   
-activations (rw)   :   22,784 B (22.25 KiB) (1 segment) *                                     
-ram (total)        :   22,784 B (22.25 KiB) = 22,784 + 0 + 0                                  
-----------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------
+model file         :   /home/vistek528/TRA_PROJ/NET_prototype/to_be_deployed/tra_61percent_deployed.tflite   
+type               :   tflite                                                                                
+c_name             :   word_classifier                                                                       
+compression        :   none                                                                                  
+options            :   allocate-inputs, allocate-outputs                                                     
+optimization       :   balanced                                                                              
+target/series      :   stm32f4                                                                               
+workspace dir      :   /tmp/mxAI_workspace63018503194562365136047860454188                                   
+output dir         :   /home/vistek528/.stm32cubemx/word_classifier_output                                   
+model_fmt          :   ss/sa per channel                                                                     
+model_name         :   tra_61percent_deployed                                                                
+model_hash         :   0x73e8354ecfe0ee74f0a2f4c71cfc8e7b                                                    
+params #           :   137,652 items (135.28 KiB)                                                            
+-------------------------------------------------------------------------------------------------------------
+input 1/1          :   'serving_default_input_50', f32(1x32x32x1), 4.00 KBytes, activations                  
+output 1/1         :   'conversion_11', f32(1x4), 16 Bytes, activations                                      
+macc               :   7,045,032                                                                             
+weights (ro)       :   138,528 B (135.28 KiB) (1 segment) / -412,080(-74.8%) vs float model                  
+activations (rw)   :   22,784 B (22.25 KiB) (1 segment) *                                                    
+ram (total)        :   22,784 B (22.25 KiB) = 22,784 + 0 + 0                                                 
+-------------------------------------------------------------------------------------------------------------
 (*) 'input'/'output' buffers can be used from the activations buffer
 
-Model name - tra_qat_model
+Model name - tra_61percent_deployed
 ------ ----------------------------------------- ---------------------- ----------------- ----------- -------------------------- --- ----------------- ----------------------- ------------------- 
 m_id   layer (type,original)                     oshape                 param/size               macc               connected to   | c_size            c_macc                  c_type              
 ------ ----------------------------------------- ---------------------- ----------------- ----------- -------------------------- --- ----------------- ----------------------- ------------------- 
@@ -80,7 +80,7 @@ model/c-model: macc=7,095,672/7,045,032 -50,640(-0.7%) weights=138,528/138,528  
 
 Generated C-graph summary
 ------------------------------------------------------------------------------------------------------------------------
-model name            : tra_qat_model
+model name            : tra_61percent_deployed
 c-name                : word_classifier
 c-node #              : 10
 c-array #             : 34

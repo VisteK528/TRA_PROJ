@@ -1,5 +1,6 @@
 import numpy as np
-from jupyter_server.auth import passwd
+from scipy.signal import stft as scipy_stft
+from scipy.signal import istft
 
 
 def gaussian_window(size, sigma=0.1):
@@ -215,3 +216,100 @@ def highpass_stft_filter(stft_matrix, filter_mask):
 
     return filtered_stft_matrix
 
+
+def noise_reduction_gain_function(noisy_signal, fs, frame_size=1024, overlap=512,
+                                  noise_frames=10):
+    """
+    Perform noise reduction using the gain function method.
+
+    Parameters:
+        noisy_signal (numpy array): The noisy input signal.
+        fs (int): Sampling frequency of the signal.
+        frame_size (int): Size of each STFT frame (default=1024).
+        overlap (int): Overlap between frames (default=512).
+        noise_frames (int): Number of initial frames to estimate noise power (default=10).
+
+    Returns:
+        clean_signal (numpy array): The denoised signal.
+    """
+    signal_length = len(noisy_signal)
+    
+    # STFT of the noisy signal
+    f, t, Zxx = scipy_stft(noisy_signal, fs, nperseg=frame_size, noverlap=overlap)
+
+    # Magnitude and phase of the noisy signal
+    magnitude = np.abs(Zxx)
+    phase = np.angle(Zxx)
+
+
+    # Estimate noise power spectrum from the first few frames
+    noise_power = np.mean(magnitude[:, :noise_frames] ** 2, axis=1, keepdims=True)
+
+    # Compute SNR and gain function
+    noisy_power = magnitude ** 2
+    snr = np.maximum(noisy_power / (noise_power + 1e-6) - 1, 0.1)  # SNR must be non-negative
+    gain = snr / (1 + snr)  # Wiener filter-based gain function
+
+
+    # Apply the gain function to the magnitude spectrum
+    cleaned_magnitude = gain * magnitude
+
+    # Reconstruct the cleaned signal
+    cleaned_spectrogram = cleaned_magnitude * np.exp(1j * phase)
+    _, clean_signal = istft(cleaned_spectrogram, fs, nperseg=frame_size,
+                            noverlap=overlap)
+
+    return clean_signal[:signal_length]
+
+def downsample_image_fixed(input_image, input_height, input_width, target_height, target_width):
+    """
+    Downsamples an image using bilinear interpolation, matching TensorFlow's tf.image.resize.
+    """
+    # Calculate scaling factors
+    scale_height = input_height / target_height
+    scale_width = input_width / target_width
+
+    # Prepare the output image
+    output_image = np.zeros((target_height, target_width), dtype=np.float32)
+
+    for y in range(target_height):
+        for x in range(target_width):
+            # Map target pixel to source coordinates
+            src_y = (y + 0.5) * scale_height - 0.5
+            src_x = (x + 0.5) * scale_width - 0.5
+
+            # Calculate integer bounding box of the source coordinates
+            y0 = int(np.floor(src_y))
+            x0 = int(np.floor(src_x))
+            y1 = min(y0 + 1, input_height - 1)
+            x1 = min(x0 + 1, input_width - 1)
+
+            # Handle edge cases for the coordinates
+            y0 = max(0, y0)
+            x0 = max(0, x0)
+
+            # Compute interpolation weights
+            dy = src_y - y0
+            dx = src_x - x0
+
+            # Bilinear interpolation
+            v00 = input_image[y0 * input_width + x0]
+            v01 = input_image[y0 * input_width + x1]
+            v10 = input_image[y1 * input_width + x0]
+            v11 = input_image[y1 * input_width + x1]
+
+            # Avoid negative weights
+            value = (
+                v00 * (1 - dx) * (1 - dy) +
+                v01 * dx * (1 - dy) +
+                v10 * (1 - dx) * dy +
+                v11 * dx * dy
+            )
+
+            # Ensure no negative values (important if inputs are strictly non-negative)
+            value = max(0, value)
+
+            # Assign to the output image
+            output_image[y, x] = value
+
+    return output_image
